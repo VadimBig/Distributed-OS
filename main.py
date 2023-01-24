@@ -1,41 +1,52 @@
 from dataclasses import dataclass
 import networkx as nx
 import numpy as np
+from collections import deque
 
 @dataclass(frozen=True)  # (можно просто tuple или как удобнее)
 class Task:
-    calc_size:  # размер задачи для выполнения
-    transfer_weight:  # размер задачи для передачи данных
-    transfer_weight_return:  # размер результата задачи для передачи данных
-    chief: 'Node'
-
-    
-
+    calc_size: int  # размер задачи для выполнения
+    transfer_weight: int  # размер задачи для передачи данных
+    transfer_weight_return: int  # размер результата задачи для передачи данных
 
 class Node:
-    node_id: int # лучше айди выдавать не внутри узла, а в контейнере узлов сети
-    x: float  # текущая кооридината
-    y: float  # текущая кооридината
-    # вычислительнвя мощность потенциально от 1 до 500 (В ЧЕМ ИЗМЕРЯЕМ?)
-    power: float
-    isCalculating: bool
-    isTransfering: bool  # не может одноврменно и отправлять данные и принимать. Взаимодейтсвует только с одним узлом. Если оба False, то узел свободен
-    isActive: bool  # подключено ли к сети (возможно не нужно)
-    isAlive: bool  # включено ли устройство в принципе
-    way_equation: function  # уравнение движения, нужно для обновления координат
-    # скорость при перемещеннии по уравнению. (ЕСЛИ УРАВНЕНИЕ ДВИЖЕНИЯ ЗАВИСИТ ОТ ВРЕМЕНИ, ЗАЧЕМ ОТДЕЛЬНО ПЕРЕМЕННАЯ СКОРОСТИ)
-    speed: float
-    source: 'Node'  # при передачe данных определяет откуда данные передаются
-    # при передачe данных определяет куда данные передаются
-    destination: 'Node'
-    route:  # сохраняет весь маршрут, если узел хочет передавать
-    tasks: list[Task] # задачи узла (пришедшие + свои)
+    # SUGGESTION FOR ALEXANDER:
+    # I think that sources and destinations of each node must be stored in the `Net` class
+    """
+        This class simulates behavior of ...
+    """
+    def __init__(self, 
+        node_id: int, 
+        x_0: float, # position at the begining of a simualtion  
+        y_0: float, 
+        power: float, # computing power
+        way_equation: function, # f : (time:float) -> (x:float, y:float)
+    ):
+        self.node_id = node_id
+        self.x = x_0
+        self.y = y_0
+        self.power = power
+        self.isActive = True # True if the node is capable of interacting with others
+        self.isCalculating = False # True if the node is computing some task 
+        self.isTransfering = False # True if the node is transfering some data
+        self.way_equation = way_equation
+        self.route = [] 
+        self.tasks = deque() # queue of tasks for node to compute
 
-
-    def calc():
-        pass
-        # написать функцию симулирующую вычисление задач 
-        # (берем tasks[0], считаем. Если досчитали, берем следующую задачу)
+    def calc(self, timedelta: float):
+        """
+            This method simulates process of node computing the tasks. 
+            timedelta: float - computing time
+        """
+        # eventually checks if the tasks are empty,
+        # if so, set isCalculating=False (=True otherwise) 
+        
+    def add_task(self, task: Task):
+        self.tasks.append(task)
+    def wake(self, ):
+        self.isActive = True
+    def sleep(self, ):
+        self.isActive = False
 
 # расстояние между узлами
 def dist(a, b):
@@ -43,7 +54,7 @@ def dist(a, b):
 
 class Net:
     def __init__(self, bandwidth_formula):
-        self.nodes: list[Node]  # набор узлов
+        self.nodes: dict()  # набор узлов в формате node_id : Node 
         self.G = nx.Graph()  # может иметь произвольное количество компонент связности, должен динамически меняться в зависимотсти от положение узлов
         self.max_bandwidth = 100  # 100 мб/c. Меняет в зависимости от растояния по нелинейным формулам
         self.max_distance = 30  # максимальное расстояние на котором поддерживается свзять 30м. Если расстояние больше, то связь разорвана
@@ -136,10 +147,10 @@ class Simulation:
 class Scenario:
     # описание сценария. Передается в конструктор симуляции. Можно написать как вот такой объект, чтобы было наглядно,
     # либо можно написать каждое поле отдельной переменной и передавать в разобранном виде в конструктор
-    data:
-    data:
-    data:
-
+    # data:
+    # data:
+    # data:
+    pass
 
 """
 помним про некоторые вещи
