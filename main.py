@@ -105,7 +105,7 @@ class Net:
         #     node.rout = rout
 
     def shortest_path(from_, to_):
-        # ДЕЛАЕМ НЕ МЫ
+        # СВЯТОСЛАВ
         pass
 
 
