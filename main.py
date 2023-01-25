@@ -32,19 +32,31 @@ class Node:
         self.way_equation = way_equation
         self.route = [] 
         self.tasks = deque() # queue of tasks for node to compute
+        self.current_progress = 0
+
+    def __update_state(self, ):
+        self.isCalculating = bool(self.tasks)
 
     def calc(self, timedelta: float):
         """
             This method simulates process of node computing the tasks. 
             timedelta: float - computing time
         """
+        self.current_progress += self.power * timedelta
+        while self.tasks and self.current_progress >= self.tasks[0].calc_size:
+            self.current_progress -= self.tasks[0].calc_size
+            self.tasks.popleft()
+        self.__update_state()
         # eventually checks if the tasks are empty,
         # if so, set isCalculating=False (=True otherwise) 
         
     def add_task(self, task: Task):
         self.tasks.append(task)
+        self.__update_state()
+
     def wake(self, ):
         self.isActive = True
+    
     def sleep(self, ):
         self.isActive = False
 
@@ -59,7 +71,7 @@ class Net:
         self.max_bandwidth = 100  # 100 мб/c. Меняет в зависимости от растояния по нелинейным формулам
         self.max_distance = 30  # максимальное расстояние на котором поддерживается свзять 30м. Если расстояние больше, то связь разорвана
         self.bandwidth_formula = bandwidth_formula(self.max_distance) # считаем силу сигнала в зависимости от расстояния по этой формуле. должна учитывать max_bandwidth
-    
+        
     # двигаем все узлы
     def move(self, t):
         for node in self.nodes:
