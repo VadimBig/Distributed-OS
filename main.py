@@ -60,20 +60,31 @@ class Node:
     def sleep(self, ):
         self.isActive = False
 
+    def move(self, t):
+        x, y = self.way_equation(t)
+        self.x = x
+        self.y = y
+
 # расстояние между узлами
 def dist(a, b):
     return np.sqrt((a.x - b.x)**2 + (a.y - b.y)**2)
 
 class Net:
-    def __init__(self, bandwidth_formula):
+    def __init__(
+        self, 
+        bandwidth_formula : function # bandwidth_formula: max_bandwidth -> (f: distance -> bandwidth) 
+    ):
         self.nodes: dict()  # набор узлов в формате node_id : Node 
         self.G = nx.Graph()  # может иметь произвольное количество компонент связности, должен динамически меняться в зависимотсти от положение узлов
         self.max_bandwidth = 100  # 100 мб/c. Меняет в зависимости от растояния по нелинейным формулам
         self.max_distance = 30  # максимальное расстояние на котором поддерживается свзять 30м. Если расстояние больше, то связь разорвана
         self.bandwidth_formula = bandwidth_formula(self.max_distance) # считаем силу сигнала в зависимости от расстояния по этой формуле. должна учитывать max_bandwidth
-        
-    # двигаем все узлы
+
     def move(self, t):
+        """
+            Call this function to move the nodes according to their 
+            way_equation formulas.
+        """
         for node in self.nodes:
             node.move(t)
 
