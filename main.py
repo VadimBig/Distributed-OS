@@ -105,8 +105,37 @@ class Net:
         #     node.rout = rout
 
     def shortest_path(from_, to_):
-        
-        pass
+        self.update_components()
+        D=nx.DiGraph()
+        e=[]
+        for i in range(len(self.nodes)):
+            for j in range(len(self.nodes)):
+                x=self.nodes[i]
+                y=self.nodes[j]
+                if (x.node_id, y.node_id in self.G.edges) and not x.isTransfering and not y.isTransfering:
+                    if (x.node_id not in e):
+                        e.append(x.node_id)
+                    elif (y.node_id not in e):
+                        e.append(y.node_id)
+                    D.add_edge((e.index(x.node_id),e.index(y.node_id),self.G.edges[x.node_id,y.node_id]['weight']))
+                    D.add_edge((e.index(y.node_id),e.index(x.node_id),self.G.edges[x.node_id,y.node_id]['weight']))
+        d=np.zeros((D.number_of_nodes(),2),float)
+        d=np.full_like(d,-1)
+        d[e.index(from_),0]=0
+        d[e.index(from_),1]=float("Inf")
+        a=[0]*D.number_of_nodes()
+        for i in range(D.number_of_nodes()- 1): 
+             for u, v, w in D.edges(data=True): 
+                  if d[u,0] != -1 and min(w['weight'],d[u,1]) > d[v,1]: 
+                      d[v,0] = d[u,0] + w['weight']
+                      d[v,1] = min(w['weight'],d[u,1])
+                      a[v]=u
+        p=[to_]
+        p1=e.index(to_)
+        while p1 != e.index(from_):
+            p1=a[p1]
+            p.insert(0,e[p1])
+        return p
 
 
 class Simulation:
