@@ -16,13 +16,11 @@ class Node:
         This class simulates behavior of ...
     """
     def __init__(self, 
-        node_id: int, 
         x_0: float, # position at the begining of a simualtion  
         y_0: float, 
         power: float, # computing power
         way_equation: function, # f : (time:float) -> (x:float, y:float)
     ):
-        self.node_id = node_id
         self.x = x_0
         self.y = y_0
         self.power = power
@@ -80,6 +78,11 @@ class Net:
         self.max_distance = 30  # максимальное расстояние на котором поддерживается свзять 30м. Если расстояние больше, то связь разорвана
         self.bandwidth_formula = bandwidth_formula(self.max_distance) # считаем силу сигнала в зависимости от расстояния по этой формуле. должна учитывать max_bandwidth
 
+        # we need variable to store state of the network.
+        # this variable must store information about following:
+        # 1. customers and performers of each task
+        # 2. sources and destinations of each node
+
     def move(self, t):
         """
             Call this function to move the nodes according to their 
@@ -88,7 +91,7 @@ class Net:
         for node in self.nodes:
             node.move(t)
 
-    # обновляем компоненты связности 
+    # update graph's components
     def update_components(self,):
         # при переопределении ребра, информация о прошлом ребре стирается
         for i in range(len(self.nodes)):
@@ -100,13 +103,6 @@ class Net:
                     self.G.add_edge(x.node_id, y.node_id, weight=self.bandwidth_formula(d))
                 else: 
                     self.G.remove_edge(x.node_id,y.node_id)
-
-    def remove_tasks(node, source):
-        new_tasks = []
-        for i in range(len(node.tasks)):
-            if node.tasks[i].chief != source:
-                new_tasks.append(node.tasks[i])
-        node.tasks = new_tasks
 
     def update(self, timestep):
         self.move(timestep)
@@ -130,17 +126,17 @@ class Net:
                 # если первые два условия не выполняются, то можно написать алгоритмы опитмизации, чтобы по возращению устрйоств в сеть они продоолжали выполнять прерванное
     def schedule():
         pass
-        # if (node.tasks):  # если есть что скедулить
-        #     # вычисляем на ком скедулить
-        #     node_dest = scheduler(node, node.tasks[-1])
-        #     # вычисляем путь до того, на ком скедулить
-        #     rout = net.shortest_path(node, node_dest)
-        #     # remove_task(node, -1)
-        #     node.rout = rout
+        # for node in self.nodes:
+            # for task ...  # пока есть что скедулить
+            #     # вычисляем на ком скедулить
+            #     node_dest = scheduler(node, node.tasks[-1])
+            #     # вычисляем путь до того, на ком скедулить
+            #     rout = net.shortest_path(node, node_dest)
+            #     # remove_task(node, -1)
+            #     node.rout = rout
 
     def shortest_path(from_, to_):
-        
-        pass
+        pass # SVYAT
 
 
 class Simulation:
@@ -149,6 +145,8 @@ class Simulation:
         # соколько щагов проссимулировать. 1 шаг == 20мс (автоматически дает нам в среднем залержку в 10мс) (180.000 == 1 час)
         self.steps: int
         self.net: Net
+        self.scentrio: Scenario 
+        self.schedule_interval = ... # как часто делаем скедулинг в ms
 
     # перемещения узлом и многое другое можно визуализировать через анимации. То есть в процессе строить анимацию, а в конце записать ее в файл .gif
     def visualization(self,): 
@@ -156,14 +154,21 @@ class Simulation:
         pass
 
     def run(self,):
-        schedule_interval = 10 # как часто делаем скедулинг
         for timestep in range(self.steps):
             self.net.update(timestep)
-            if timestep % schedule_interval:
+            if timestep % self.schedule_interval == 0:
                 self.net.schedule()
 
 
 
+
+# 1. Сценарии. Разобрать с генератором задач
+# 2. Переменная хранения состояния сети, интерфейс для использования в Simulator (описан в init класса Net)  
+# 3. Написать примитивный скедулинг задач. (из описания ниже)
+# 4. дописать функцию self.run()
+# 5. Визуализация
+# 6. Вывод нужной информации в какой-то файлик. Определится с измеряемыми метриками симуляции.
+# 7. Подумать над гипотезой о том, что распр. вычисления не эффективны. Подумать как ее проверить (мб александру)
 
 
 @dataclass(frozen=True)
@@ -173,8 +178,14 @@ class Scenario:
     # data:
     # data:
     # data:
-    pass
-
+    def __init__(self, ):
+        self.way_eqs : list[function] = ...
+        # две возможности задания тасков
+        # 1) весь список задач изначально известен. новые задачи не появляются в процессе симуляции
+        # 2) задачи генерируются каким-то генератором задач. соотвественно, доп задача напиать генератор задач (от time)
+        # т.е появление задач привязано к какому-то времени 
+        self.tasks_list = ... # or task generator in 2 case
+        self.config_devices = ...
 """
 помним про некоторые вещи
 1) нужно будет сделать baseline - скедулер выбирает в качестве исполнителя исходный узел, нет передачи данных по сети, нет маршрутов
