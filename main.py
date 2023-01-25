@@ -117,8 +117,8 @@ class Net:
                         e.append(x.node_id)
                     elif (y.node_id not in e):
                         e.append(y.node_id)
-                    D.add_edge((e.index(x.node_id),e.index(y.node_id),self.G.edges[x.node_id,y.node_id]['weight']))
-                    D.add_edge((e.index(y.node_id),e.index(x.node_id),self.G.edges[x.node_id,y.node_id]['weight']))
+                    D.add_edge(e.index(x.node_id),e.index(y.node_id),weight=self.G.edges[x.node_id,y.node_id]['weight'])
+                    D.add_edge(e.index(y.node_id),e.index(x.node_id),weight=self.G.edges[x.node_id,y.node_id]['weight'])
         d=np.zeros((D.number_of_nodes(),2),float)
         d=np.full_like(d,-1)
         d[e.index(from_),0]=0
