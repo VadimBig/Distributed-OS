@@ -2,12 +2,13 @@ from dataclasses import dataclass
 import networkx as nx
 import numpy as np
 from collections import deque
-
+from typing import Callable, Iterable
 @dataclass(frozen=True)  # (можно просто tuple или как удобнее)
 class Task:
-    calc_size: int  # размер задачи для выполнения
-    transfer_weight: int  # размер задачи для передачи данных
+    calc_size: float # размер задачи для выполнения
+    transfer_weight: int  # размер задачи для передачи данных в байтах
     transfer_weight_return: int  # размер результата задачи для передачи данных
+    customer_id: int # id of a customer of the task 
 
 class Node:
     # SUGGESTION FOR ALEXANDER:
@@ -19,7 +20,7 @@ class Node:
         x_0: float, # position at the begining of a simualtion  
         y_0: float, 
         power: float, # computing power
-        way_equation: function, # f : (time:float) -> (x:float, y:float)
+        way_equation: Callable, # f : (time:float) -> (x:float, y:float)
     ):
         self.x = x_0
         self.y = y_0
@@ -34,6 +35,13 @@ class Node:
 
     def __update_state(self, ):
         self.isCalculating = bool(self.tasks)
+
+    def forget_tasks(self, to_forget: Iterable):
+        new_tasks = deque()
+        for task in self.tasks:
+            if task.customer_id not in to_forget:
+                new_tasks.append(task)
+        self.tasks = new_tasks
 
     def calc(self, timedelta: float):
         """
@@ -70,9 +78,10 @@ def dist(a, b):
 class Net:
     def __init__(
         self, 
-        bandwidth_formula : function # bandwidth_formula: max_bandwidth -> (f: distance -> bandwidth) 
+        bandwidth_formula : callable, # bandwidth_formula: max_bandwidth -> (f: distance -> bandwidth) 
+        nodes : dict() # dict {node_id : Node} 
     ):
-        self.nodes: dict()  # набор узлов в формате node_id : Node 
+        self.nodes : dict() = nodes    
         self.G = nx.Graph()  # может иметь произвольное количество компонент связности, должен динамически меняться в зависимотсти от положение узлов
         self.max_bandwidth = 100  # 100 мб/c. Меняет в зависимости от растояния по нелинейным формулам
         self.max_distance = 30  # максимальное расстояние на котором поддерживается свзять 30м. Если расстояние больше, то связь разорвана
@@ -83,6 +92,22 @@ class Net:
         # 1. customers and performers of each task
         # 2. sources and destinations of each node
 
+        self.task_customers = {} # {task_id : node_id (node is a customer)}
+        self.performers = Net.__init_performers(self.nodes.keys()) #  {node_id: list of ids of performers}
+        self.destinations = Net.__init_destinations(self.nodes.keys()) # {node_id: destination of data transmission} # if destination is 0, then node doesn't transimit data
+
+    def __init_destinations(node_ids):
+        d = dict()
+        for id in node_ids:
+            d[id] = 0
+        return d
+
+    def __init_performers(node_ids):
+        d = dict()
+        for id in node_ids:
+            d[id] = []
+        return d
+
     def move(self, t):
         """
             Call this function to move the nodes according to their 
@@ -92,7 +117,7 @@ class Net:
             node.move(t)
 
     # update graph's components
-    def update_components(self,):
+    def __update_components(self,):
         # при переопределении ребра, информация о прошлом ребре стирается
         for i in range(len(self.nodes)):
             for j in range(i,len(self.nodes)):
@@ -104,25 +129,37 @@ class Net:
                 else: 
                     self.G.remove_edge(x.node_id,y.node_id)
 
+    def __check_connection(self,id_1, id_2):
+        ####!!!!!!
+        return True 
+
+    def add_task(self, customer_id, task : Task):
+        self.nodes[customer_id].tasks.append(task)
+
     def update(self, timestep):
         self.move(timestep)
-        self.update_components()
-        for node in self.nodes:
-            node.calc()
-            if node.source:
-                if node.source.node_id not in nx.node_connected_component(self.G, node.node_id):
-                    Net.remove_tasks(node, node.source)
-                    node.source = None
-            elif node.destination:
-                if node.destination.node_id not in nx.node_connected_component(self.G, node.node_id):
-                    Net.remove_tasks(node.destination, node)
-                    node.destination = None
-                # is_same_component()
+        self.__update_components()
+        for node_id in self.nodes.keys():
+            
+            self.nodes[node_id].move()
+            if self.destinations[node_id]:             
+                is_connected = self.check_connection(node_id, self.destinations[node_id])
+                if not is_connected:
+                    self.destinations[node_id] = 0
+
+            lost_connections = {}
+            for task in self.nodes[node_id].tasks:
+                customer_id = task.customer_id
+                if self.__check_connection(node_id, customer_id):
+                    lost_connections.add(customer_id)
+            self.nodes[node_id].forget_tasks(lost_connections)
+
+
+
                 # проверить что передача данных все еще идет и все в порядке (нет разрыва сети). Иначе - обработать ситуацию
-            if (node.isCalculating):
+            if (self.nodes[node_id].isCalculating):
                 pass
                 # проверить что вычисления все еще имеют смысл (тот для кого мы вычисляем все еще в сети). Иначе - обработать ситуацию
-
                 # если первые два условия не выполняются, то можно написать алгоритмы опитмизации, чтобы по возращению устрйоств в сеть они продоолжали выполнять прерванное
     def schedule():
         pass
@@ -159,9 +196,6 @@ class Simulation:
             if timestep % self.schedule_interval == 0:
                 self.net.schedule()
 
-
-
-
 # 1. Сценарии. Разобрать с генератором задач
 # 2. Переменная хранения состояния сети, интерфейс для использования в Simulator (описан в init класса Net)  
 # 3. Написать примитивный скедулинг задач. (из описания ниже)
@@ -179,7 +213,7 @@ class Scenario:
     # data:
     # data:
     def __init__(self, ):
-        self.way_eqs : list[function] = ...
+        self.way_eqs : list[callable] = ...
         # две возможности задания тасков
         # 1) весь список задач изначально известен. новые задачи не появляются в процессе симуляции
         # 2) задачи генерируются каким-то генератором задач. соотвественно, доп задача напиать генератор задач (от time)
