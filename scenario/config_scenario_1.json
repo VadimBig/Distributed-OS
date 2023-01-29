@@ -1,0 +1,31 @@
+{
+    "count_devices": 4,
+    "nodes": {
+        "1": {
+            "x": -1,
+            "y": -1,
+            "power": 10,
+            "way_eq": "static"
+        },
+        "2": {
+            "x": -1,
+            "y": 1,
+            "power": 10,
+            "way_eq": "static"
+        },
+        "3": {
+            "x": 1,
+            "y": 1,
+            "power": 10,
+            "way_eq": "static"
+        },
+        "4": {
+            "x": 1,
+            "y": -1,
+            "power": 10,
+            "way_eq": "static"
+        }
+    },
+    "poweroff_posibility": false
+
+}
