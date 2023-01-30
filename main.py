@@ -198,8 +198,33 @@ class Net:
         #     # remove_task(node, -1)
         #     node.rout = rout
 
-    def shortest_path(from_, to_):
-        pass  # SVYAT
+    def shortest_path(self,from_, to_):
+        self.__update_components()
+        D=nx.DiGraph()
+        for i in self.G.nodes:
+            for j in self.G.nodes:
+                if (i,j) in self.G.edges and not (self.nodes[i].isTransfering or self.nodes[j].isTransfering):
+                    D.add_edge(i,j,weight=self.G.edges[i,j]['weight'])
+                    D.add_edge(j,i,weight=self.G.edges[i,j]['weight'])
+                    
+        for i in nx.weakly_connected_components(D):
+            if from_ and to_ in i:
+                cost=dict.fromkeys(D.nodes,-1)
+                cost[from_]=float("Inf")
+                vertexes=dict.fromkeys(D.nodes)
+                for i in range(D.number_of_nodes()- 1): 
+                    for u, v, w in D.edges(data=True): 
+                        if cost[u] != -1 and min(w['weight'],cost[u]) > cost[v]:
+                            cost[v] = min(w['weight'],cost[u])
+                            vertexes[v]=u
+                route=[to_]
+                r=to_
+                while r != from_:
+                    r=vertexes[r]
+                    route.insert(0,r)
+                return route
+            
+        return [from_]
 
 
 class Simulation:
