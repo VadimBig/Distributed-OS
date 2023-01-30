@@ -112,20 +112,23 @@ class Net:
                 if (i,j) in self.G.edges and not (self.nodes[i].isTransfering or self.nodes[j].isTransfering):
                     D.add_edge(i,j,weight=self.G.edges[i,j]['weight'])
                     D.add_edge(j,i,weight=self.G.edges[i,j]['weight'])
-        d=dict.fromkeys(D.nodes,-1)
-        d[from_]=float("Inf")
-        a=dict.fromkeys(D.nodes)
-        for i in range(D.number_of_nodes()- 1): 
-             for u, v, w in D.edges(data=True): 
-                 if d[u] != -1 and min(w['weight'],d[u]) > d[v]:
-                       d[v] = min(w['weight'],d[u])
-                       a[v]=u
-        p=[to_]
-        p1=to_
-        while p1 != from_:
-            p1=a[p1]
-            p.insert(0,p1)
-        return p
+        if from_ in D.nodes  and  to_ in D.nodes:
+            cost=dict.fromkeys(D.nodes,-1)
+            cost[from_]=float("Inf")
+            vertexes=dict.fromkeys(D.nodes)
+            for i in range(D.number_of_nodes()- 1): 
+                for u, v, w in D.edges(data=True): 
+                    if cost[u] != -1 and min(w['weight'],cost[u]) > cost[v]:
+                        cost[v] = min(w['weight'],cost[u])
+                        vertexes[v]=u
+            route=[to_]
+            r=to_
+            while r != from_:
+                r=vertexes[r]
+                route.insert(0,r)
+            return route
+        else:
+            return [from_]
 
 
 class Simulation:
