@@ -2,9 +2,9 @@ import plotly.graph_objects as go
 import main
 import networkx as nx
 
-graph = sdf.Net.G
+graph = main.Net.G
 start = True
-while start:
+for i in range(1800):
     edge_x = []
     edge_y = []
     for edge in graph.edges():
@@ -76,6 +76,4 @@ while start:
                     xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                     yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
                     )
-    numbers = 0
-    fig.write_image(f"images/fig--{numbers}.png")
-    numbers =+ 1
+    fig.write_image(f"images/fig--{i}.png")
