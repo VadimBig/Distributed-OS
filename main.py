@@ -153,7 +153,7 @@ class Simulation:
         self.net: Net
 
     # перемещения узлом и многое другое можно визуализировать через анимации. То есть в процессе строить анимацию, а в конце записать ее в файл .gif
-    def visualization(self,):
+        def visualization(self,):
         frames = []
         duration1 = [0]
         Start = True
@@ -163,11 +163,9 @@ class Simulation:
             if time == 18000:
                 break
 
-        while Start:
-            number = 0
-            frame = Image.open(f'images/fig--{number}.png')
+        for i in range(1800):
+            frame = Image.open(f'images/fig--{i}.png')
             frames.append(frame)
-            number = number + 1
 
         frames[0].save(
             'Graph.gif',
