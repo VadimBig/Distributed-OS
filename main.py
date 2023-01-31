@@ -123,14 +123,15 @@ class Net:
                         if cost[u] != -1 and min(w['weight'],cost[u]) > cost[v]:
                             cost[v] = min(w['weight'],cost[u])
                             vertexes[v]=u
-                route=[to_]
+                route=[[to_]]
                 r=to_
                 while r != from_:
                     r=vertexes[r]
-                    route.insert(0,r)
+                    route[0].insert(0,r)
+                route.append(cost[to_])
                 return route
             
-        return [from_]
+        return [[from_], -1]
 
 
 class Simulation:
