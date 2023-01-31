@@ -54,7 +54,7 @@ class Node:
             timedelta: float - computing time
         """
         self.current_progress += self.power * timedelta
-        if self.current_progress - self.tasks[0].calc_size >= 0:
+        if self.tasks and self.current_progress - self.tasks[0].calc_size >= 0:
             self.current_progress -= self.tasks[0].calc_size
             finished_task = self.tasks.popleft()
         self.__update_state()
@@ -69,6 +69,14 @@ class Node:
     def add_task(self, task: Task):
         self.tasks.append(task)
         self.__update_state()
+
+    def get_loading(self,):
+        '''
+            Returns the current loading of the node.
+
+            Loading is (a sum of all task sizes in a queue of tasks minus current progress) divided by a computing power of the node 
+        '''
+        return sum([t.calc_size for t in self.tasks]) - self.current_progress
 
     def wake(self, ):
         self.isActive = True
@@ -114,6 +122,8 @@ class Net:
         self.performers = Net.__init_performers(self.nodes.keys())
         # {node_id: destination of data transmission} # if destination is 0, then node doesn't transimit data
         self.destinations = Net.__init_destinations(self.nodes.keys())
+        
+        self.transfers = []
 
     def __init_destinations(node_ids):
         d = dict()
@@ -181,50 +191,111 @@ class Net:
             # collect data to be sent back
             finished_task = self.node.calc()
             to_be_sent_back.append(finished_task)
-        
+
         return to_be_sent_back
-            # 1) проверить что передача данных все еще идет и все в порядке (нет разрыва сети). Иначе - обработать ситуацию (РЕАЛИЗОВАНО)
-            # 2) проверить что вычисления все еще имеют смысл (тот для кого мы вычисляем все еще в сети). Иначе - обработать ситуацию (РЕАЛИЗОВАНО)
-            # 3) если первые два условия не выполняются, то можно написать алгоритмы опитмизации, 
-            #    чтобы по возращению устрйоств в сеть они продоолжали выполнять прерванное (НЕ РЕАЛИЗОВАНО)
+        # 1) проверить что передача данных все еще идет и все в порядке (нет разрыва сети). Иначе - обработать ситуацию (РЕАЛИЗОВАНО)
+        # 2) проверить что вычисления все еще имеют смысл (тот для кого мы вычисляем все еще в сети). Иначе - обработать ситуацию (РЕАЛИЗОВАНО)
+        # 3) если первые два условия не выполняются, то можно написать алгоритмы опитмизации,
+        #    чтобы по возращению устрйоств в сеть они продоолжали выполнять прерванное (НЕ РЕАЛИЗОВАНО)
 
-    def schedule():
-        pass
-        # for node in self.nodes:
-        #     for task ... 
-        #     node_dest = scheduler(node, node.tasks[-1])
-        #     # вычисляем путь до того, на ком скедулить
-        #     rout = net.shortest_path(node, node_dest)
-        #     # remove_task(node, -1)
-        #     node.rout = rout
+    def schedule(self,
+                 timestamp, # current time (in the simulation)
+                 to_schedule,  # list of tuples (node_id, Task)
+                 mode = 'basic' # possible values: basic, elementary
+                 ):
 
-    def shortest_path(self,from_, to_):
+        # A PROBLEM TO DISCUSS:
+        # приоритет в постановке задач получают те ноды, которые идут первыми в списке этой итерации
+        if mode == 'basic':
+            scheduler = self.basic_scheduler
+        elif mode == 'elementary':
+            scheduler = self.elementaty_scheduler
+        else:
+            print("Wrong value encountered in `mode` argument. Possible options are: basic, elementary")
+            raise ValueError
+
+        for node_id, task in to_schedule:
+            opt_performer, route, cost = scheduler(node_id=node_id, task=task)
+            ### in the process, to be continued 
+
+    def basic_scheduler(self,
+                        node_id,
+                        task: Task):
+        '''
+            A basic scheduler which assigns tasks to nodes according to the following algorithm
+
+
+            в компоненте связности каждому ребру присваиваем вес transfer_weight / bandwidth
+            запускаем беллмана форда для source -> получаем расстояния до всех других вершин
+            добавляем к каждму расстоянию calc_size / power
+            выбираем наименьшее число из полученных - это тот кто выполнит нашу задачу быстрее всех с учетом передачи данных
+
+            так как нам еще нужно вернуть результат в source, то на первом этапе прибавляем еще аналогичное слагаемое для transfer_weight_return
+
+
+            input:
+                'node_id' (int) - id of a customer node
+                'task' (Task) - a task to be scheduled
+            output:
+                'node_id' (int) - an id of the task performer
+        '''
+        all_reachable_nodes = list(nx.shortest_path(self.G, node_id).keys())
+        min_cost = self.get_loading()
+        optimal_performer = node_id
+        route_to_performer = [node_id]
+        for p_id in all_reachable_nodes:
+            route, route_cost = self.shortest_path(node_id, p_id)
+            if route_cost < 0:
+                continue
+            overall_cost = (task.transfer_weight + task.transfer_weight_return)/route_cost + \
+                self.nodes[node_id].get_loading()
+            if overall_cost < min_cost:
+                min_cost = overall_cost
+                optimal_performer = p_id
+                route_to_performer = route
+        return optimal_performer, route_to_performer, min_cost
+
+    def elementaty_scheduler(self,
+                             node_id,
+                             task: Task
+                             ):
+        '''
+            A simplest scheduler which assigns every node its task
+            input:
+                'node_id' (int) - id of a customer node
+                'task' (Task) - a task to be scheduled
+            output:
+                'node_id' (int) - an id of the task performer
+        '''
+        return node_id
+
+    def shortest_path(self, from_, to_):
         self.__update_components()
-        D=nx.DiGraph()
+        D = nx.DiGraph()
         for i in self.G.nodes:
             for j in self.G.nodes:
-                if (i,j) in self.G.edges and not (self.nodes[i].isTransfering or self.nodes[j].isTransfering):
-                    D.add_edge(i,j,weight=self.G.edges[i,j]['weight'])
-                    D.add_edge(j,i,weight=self.G.edges[i,j]['weight'])
-                    
+                if (i, j) in self.G.edges and not (self.nodes[i].isTransfering or self.nodes[j].isTransfering):
+                    D.add_edge(i, j, weight=self.G.edges[i, j]['weight'])
+                    D.add_edge(j, i, weight=self.G.edges[i, j]['weight'])
+
         for i in nx.weakly_connected_components(D):
             if from_ and to_ in i:
-                cost=dict.fromkeys(D.nodes,-1)
-                cost[from_]=float("Inf")
-                vertexes=dict.fromkeys(D.nodes)
-                for i in range(D.number_of_nodes()- 1): 
-                    for u, v, w in D.edges(data=True): 
-                        if cost[u] != -1 and min(w['weight'],cost[u]) > cost[v]:
-                            cost[v] = min(w['weight'],cost[u])
-                            vertexes[v]=u
-                route=[to_]
-                r=to_
+                cost = dict.fromkeys(D.nodes, -1)
+                cost[from_] = float("Inf")
+                vertexes = dict.fromkeys(D.nodes)
+                for i in range(D.number_of_nodes() - 1):
+                    for u, v, w in D.edges(data=True):
+                        if cost[u] != -1 and min(w['weight'], cost[u]) > cost[v]:
+                            cost[v] = min(w['weight'], cost[u])
+                            vertexes[v] = u
+                route = [to_]
+                r = to_
                 while r != from_:
-                    r=vertexes[r]
-                    route.insert(0,r)
+                    r = vertexes[r]
+                    route.insert(0, r)
                 return route
-            
-        return [from_]
+
+        return []
 
 
 class Simulation:
