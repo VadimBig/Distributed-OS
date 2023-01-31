@@ -11,7 +11,6 @@ class Task:
     calc_size: int  # размер задачи для выполнения
     transfer_weight: int  # размер задачи для передачи данных
     transfer_weight_return: int  # размер результата задачи для передачи данных
-    time_to_create: float # время появления задачи
 
 class Node:
     # SUGGESTION FOR ALEXANDER:
@@ -183,6 +182,71 @@ class Simulation:
     def visualization(self,): 
         # не мы
         pass
+    
+
+    def create_nodes(self, scenario_nodes):
+        """
+        Принимает на вход `nodes` - словарь, содержащий информацию об узлах, вида:
+        ```
+        "nodes": {
+            "1": {
+                "x": -2,
+                "y": -2,
+                "x_start": -4,
+                "y_start": -4,
+                "x_end": 4,
+                "y_end": 4,
+                "power": 10,
+                "w": 10,
+                "way_eq": "brownian",
+                "direction": 1
+        },
+        ```
+        На выходе словарь вида:
+        ```
+        {
+            node_id: Node
+        }
+        ```
+        """
+        nodes = dict()
+        # Создаём словарь узлов {node_id: Node}
+        for node_id in scenario_nodes:
+            x0, y0 = scenario_nodes[node_id]['x'], scenario_nodes[node_id]['y']
+            power = scenario_nodes[node_id]['power']
+            way_eq = scenario_nodes[node_id]['way_eq']
+
+            # задаём уравнение движения для узла
+            if way_eq == "static":
+                way_equation = lambda x, y, d, t: (x0, y0)
+                # way_equation = lambda t: (x0, y0)
+            elif way_eq == "circle":
+                w = scenario_nodes[node_id]['w']
+                direction = scenario_nodes[node_id]['direction'] # её надо хранить в ноде
+                xc, yc = scenario_nodes[node_id]['xc'], scenario_nodes[node_id]['yc']
+                way_equation = lambda x0, y0, d, t: eq_circle(x0, y0, xc, yc, w, d, t)
+            elif way_eq == "partline":
+                x_s, y_s = scenario_nodes[node_id]['x_start'], scenario_nodes[node_id]['y_start']
+                x_e, y_e = scenario_nodes[node_id]['x_end'], scenario_nodes[node_id]['y_end']
+                w, direction = scenario_nodes[node_id]['w'], 1
+                way_equation = lambda x0, y0, d, t: eq_partline(x0, y0, x_s, y_s, x_e, y_e, w, t, d)
+            elif way_eq == "sin_or_cos":
+                x_s, x_e = scenario_nodes[node_id]['x_start'], scenario_nodes[node_id]['x_end']
+                w = scenario_nodes[node_id]['w']
+                its_sin = scenario_nodes[node_id]['sin']
+                way_equation = lambda x0, y, d, t: eq_sin_or_cos(x0, y0, x_s, x_e, w, t, d, sin=its_sin)
+            elif way_eq == "brownian":
+                n = 1
+                w = scenario_nodes[node_id]['w']
+                x_s, y_s = scenario_nodes[node_id]['x_start'], scenario_nodes[node_id]['y_start']
+                x_e, y_e = scenario_nodes[node_id]['x_end'], scenario_nodes[node_id]['y_end']
+                way_equation = lambda x0, y0, d, t: constraints_to_brownian(brownian(x0, y0, n, t, w, out=None), x_s, y_s, x_e, y_e)
+            else:
+                print(f"Для узла {node_id} задано не реализованное уравнение движения - {way_eq}.")
+                raise ValueError
+
+            # задаём узел
+            nodes[node_id] = Node(x0, y0, power, way_equation, direction)
 
     def run(self,):
         for timestep in range(self.steps):
@@ -198,28 +262,28 @@ def generate_tasks(list_node_ids: list[str])->list[tuple]:
     * `transfer_weight_return` - размер ответа
     * `time_to_create` - время появления задачи в симуляции
 
-    На выходе - словарь вида: 
+    На выходе отсортированный по времени список: 
     ```
-    {
-        id_1: [task_1, task_2, ...],
-        id_2: ...,
+    [
+        ('1', , time_to_create_1, task_1),
+        ('1', , time_to_create_2, task_2),
         ...
-    }
+    ]
     ```
     """
-    output = dict()
+    output = []
+    prev_time = 0.0
     for i in list_node_ids:
         count_tasks_node_i = int(np.random.exponential(scale=2.0, size=1)) # количество задач на узел по экспоненциальному распределению
-        tasks_node_i = []
         for j in range(count_tasks_node_i):
             calc_size = int(np.abs(np.random.normal(loc=150.0, scale=100, size=1))) # распределение вычислительной сложности задачи?
             transfer_weight = int(np.abs(np.random.normal(loc=150.0, scale=100, size=1))) # распределение размера задачи?
             transfer_weight_return = int(np.abs(np.random.normal(loc=150.0, scale=100, size=1))) # распределение размера ответа
-            time_to_create = float(np.random.exponential(scale = 100.0, size=1)) # задаём время, когда должна появится задача по экспоненциальному распределению
-            task_j = Task(calc_size, transfer_weight, transfer_weight_return, time_to_create)
-            tasks_node_i.append(task_j)
-        output[i] = tasks_node_i
-    return output
+            time_to_create = prev_time + float(np.random.exponential(scale = 100.0, size=1)) # задаём время, когда должна появится задача по экспоненциальному распределению
+            task_j = Task(calc_size, transfer_weight, transfer_weight_return)
+            output.append((i, time_to_create, task_j))
+            prev_time = time_to_create
+    return sorted(output, key=lambda x: x[1])
 
 
 # загружаем json с описанием сценария

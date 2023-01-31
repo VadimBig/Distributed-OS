@@ -1,0 +1,67 @@
+{
+    "count_devices": 5,
+    "nodes": {
+        "1": {
+            "x": -2,
+            "y": -2,
+            "x_start": -4,
+            "y_start": -4,
+            "x_end": 4,
+            "y_end": 4,
+            "power": 10,
+            "w": 10,
+            "way_eq": "brownian",
+            "direction": 1
+        },
+        "2": {
+            "x": -2,
+            "y": 2,
+            "x_start": -4,
+            "y_start": -4,
+            "x_end": 4,
+            "y_end": 4,
+            "power": 10,
+            "w": 10,
+            "way_eq": "brownian",
+            "direction": 1
+        },
+        "3": {
+            "x": 2,
+            "y": 2,
+            "x_start": -4,
+            "y_start": -4,
+            "x_end": 4,
+            "y_end": 4,
+            "power": 10,
+            "w": 7,
+            "way_eq": "brownian",
+            "direction": 1
+        },
+        "4": {
+            "x": 2,
+            "y": -2,
+            "x_start": -4,
+            "y_start": -4,
+            "x_end": 4,
+            "y_end": 4,
+            "power": 10,
+            "w": 3,
+            "way_eq": "brownian",
+            "direction": 1
+        },
+        "5": {
+            "x": 0,
+            "y": 0,
+            "x_start": -4,
+            "y_start": -4,
+            "x_end": 4,
+            "y_end": 4,
+            "power": 10,
+            "w": 5,
+            "way_eq": "brownian",
+            "direction": 1
+        }
+    },
+    "poweroff_posibility": false
+
+}

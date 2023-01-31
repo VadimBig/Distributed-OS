@@ -1,5 +1,5 @@
 {
-    "count_devices": 4,
+    "count_devices": 6,
     "nodes": {
         "1": {
             "x": -1,
@@ -42,26 +42,24 @@
             "direction": 1
         },
         "5": {
-            "x": 1,
-            "y": -1,
-            "x_start": 0,
-            "y_start": 0,
-            "x_end": 1,
-            "y_end": 1,
+            "x": 2,
+            "y": -2,
+            "xc": 0,
+            "yc": 0,
             "power": 10,
-            "w": 10,
-            "way_eq": "partline",
+            "w": 5,
+            "way_eq": "circle",
             "direction": 1
         },
         "6": {
-            "x": 1,
-            "y": -1,
-            "x_start": 0,
-            "y_start": 0,
-            "x_end": 1,
-            "y_end": 1,
+            "x": 0,
+            "y": 0,
+            "x_start": -2,
+            "y_start": -2,
+            "x_end": 2,
+            "y_end": 2,
             "power": 10,
-            "w": 10,
+            "w": 5,
             "way_eq": "partline",
             "direction": 1
         }
