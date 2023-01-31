@@ -189,7 +189,7 @@ class Net:
             #    чтобы по возращению устрйоств в сеть они продоолжали выполнять прерванное (НЕ РЕАЛИЗОВАНО)
 
     def schedule():
-        
+        pass
         # for node in self.nodes:
         #     for task ... 
         #     node_dest = scheduler(node, node.tasks[-1])
