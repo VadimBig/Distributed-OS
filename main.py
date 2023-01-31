@@ -79,10 +79,20 @@ class Node:
         return sum([t.calc_size for t in self.tasks]) - self.current_progress
 
     def wake(self, ):
+        assert self.isActive == False, "This node isn't sleeping."
         self.isActive = True
 
     def sleep(self, ):
+        assert self.isActive == True, "This node is already sleeping."
         self.isActive = False
+    
+    def start_transfer(self, ):
+        assert self.isTransfering == False, "This node is already transfering some data."
+        self.isTransfering = True
+
+    def end_transfer(self, ):
+        assert self.isTransfering == True, "This node isn't transfering any data now."
+        self.isTransfering = False
 
     def move(self, t):
         x, y = self.way_equation(t)
@@ -162,11 +172,24 @@ class Net:
     def __check_connection(self, id_1, id_2):
         # !!!!!!
         return True
+    
+    def __start_transfering(self, 
+                            task: Task,
+                            opt_performer,
+                            route,
+                            ):
+        self.transfers.append(...)
+        for node_id in route:
+            self.nodes[node_id].start_transfer()
+
 
     def add_task(self, customer_id, task: Task):
         self.nodes[customer_id].tasks.append(task)
 
     def update(self, timestep):
+        # ISSUE!!!!!
+        # ADD AN UPDATE OF THE TRANSFERINGS (IS TRANSFERING STILL CONTINUES) 
+
         to_be_sent_back = []
 
         self.move(timestep)
@@ -197,7 +220,7 @@ class Net:
         # 2) проверить что вычисления все еще имеют смысл (тот для кого мы вычисляем все еще в сети). Иначе - обработать ситуацию (РЕАЛИЗОВАНО)
         # 3) если первые два условия не выполняются, то можно написать алгоритмы опитмизации,
         #    чтобы по возращению устрйоств в сеть они продоолжали выполнять прерванное (НЕ РЕАЛИЗОВАНО)
-
+    
     def schedule(self,
                  timestamp, # current time (in the simulation)
                  to_schedule,  # list of tuples (node_id, Task)
@@ -216,6 +239,7 @@ class Net:
 
         for node_id, task in to_schedule:
             opt_performer, route, cost = scheduler(node_id=node_id, task=task)
+            self.__start_transfering(task, opt_performer, route)
             ### in the process, to be continued 
 
     def basic_scheduler(self,
@@ -267,7 +291,7 @@ class Net:
             output:
                 'node_id' (int) - an id of the task performer
         '''
-        return node_id
+        return node_id, [node_id], self.nodes[node_id].get_loading()
 
     def shortest_path(self, from_, to_):
         self.__update_components()
