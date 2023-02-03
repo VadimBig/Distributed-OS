@@ -1,3 +1,4 @@
 test.*
 test.py
 /test.py
+__pycache__

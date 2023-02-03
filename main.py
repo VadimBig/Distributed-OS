@@ -34,7 +34,6 @@ class Node:
         self.isCalculating = False  # True if the node is computing some task
         self.isTransfering = False  # True if the node is transfering some data
         self.way_equation = way_equation
-        self.route = []
         self.tasks = deque()  # queue of tasks for node to compute
         self.current_progress = 0
 
@@ -98,6 +97,18 @@ class Node:
         x, y = self.way_equation(t)
         self.x = x
         self.y = y
+
+    def __str__(self) -> str:
+        d = {'x': self.x,
+            'y': self.y,
+            'power': self.power,
+            'isActive': self.isActive,
+            'isCalculating':self.isCalculating,  
+            'isTransfering':self.isTransfering, 
+            'tasks':str(self.tasks),  
+            'current_progress':self.current_progress
+        }
+        return str(d)
 
 # расстояние между узлами
 
@@ -170,33 +181,55 @@ class Net:
                     self.G.remove_edge(x.node_id, y.node_id)
 
     def __check_connection(self, id_1, id_2):
-        # !!!!!!
-        return True
+        if nx.shortest_path(G, id_1, id_2): 
+            return True
+        return False
     
+    def __calc_transfer_time(self,
+                             task: Task,
+                             bandwidth
+                             ):
+        return task.transfer_weight/bandwidth
+
     def __start_transfering(self, 
                             task: Task,
-                            opt_performer,
                             route,
+                            timestamp
                             ):
-        self.transfers.append(...)
+        end_time = timestamp + self.__calc_transfer_time(task)
+        self.transfers.append((route, end_time))
         for node_id in route:
             self.nodes[node_id].start_transfer()
 
+    def __stop_transfering(self, 
+                           route
+                           ):
+        for node_id in self.route:
+            self.nodes[node_id].end_transfer()
 
     def add_task(self, customer_id, task: Task):
         self.nodes[customer_id].tasks.append(task)
 
     def update(self, timestep):
-        # ISSUE!!!!!
-        # ADD AN UPDATE OF THE TRANSFERINGS (IS TRANSFERING STILL CONTINUES) 
-
         to_be_sent_back = []
 
         self.move(timestep)
         self.__update_components()
-        for node_id in self.nodes.keys():
+        # transferings update
+        for transfer in self.transfers:
+            _, route, end_time = transfer
 
-            self.nodes[node_id].move()
+            # CHECK IF THE TRANSFERS ARE STILL HAPPENING
+            if end_time >= timestep:
+                self.__stop_transfering(route)
+            # CHECK IF THE TRANSFERS ARE STILL POSSIBLE
+            for i in range(len(route)):
+                for j in range(i+1,len(route)):
+                    if not self.__check_connection(i,j):
+                        self.__stop_transfering(route)
+                        break   
+
+        for node_id in self.nodes.keys():
             if self.destinations[node_id]:
                 is_connected = self.check_connection(
                     node_id, self.destinations[node_id])
@@ -238,9 +271,9 @@ class Net:
             raise ValueError
 
         for node_id, task in to_schedule:
-            opt_performer, route, cost = scheduler(node_id=node_id, task=task)
-            self.__start_transfering(task, opt_performer, route)
-            ### in the process, to be continued 
+            opt_performer, route, _, route_bandwidth = scheduler(node_id=node_id, task=task)
+            self.__start_transfering(task, route_bandwidth, route, timestamp)
+
 
     def basic_scheduler(self,
                         node_id,
@@ -267,6 +300,7 @@ class Net:
         min_cost = self.get_loading()
         optimal_performer = node_id
         route_to_performer = [node_id]
+        route_bandwidth = float('inf')
         for p_id in all_reachable_nodes:
             route, route_cost = self.shortest_path(node_id, p_id)
             if route_cost < 0:
@@ -277,7 +311,8 @@ class Net:
                 min_cost = overall_cost
                 optimal_performer = p_id
                 route_to_performer = route
-        return optimal_performer, route_to_performer, min_cost
+                route_bandwidth = route_cost
+        return optimal_performer, route_to_performer, min_cost, route_bandwidth
 
     def elementaty_scheduler(self,
                              node_id,
@@ -291,7 +326,7 @@ class Net:
             output:
                 'node_id' (int) - an id of the task performer
         '''
-        return node_id, [node_id], self.nodes[node_id].get_loading()
+        return node_id, [node_id], self.nodes[node_id].get_loading(), float('inf')
 
     def shortest_path(self, from_, to_):
         self.__update_components()
