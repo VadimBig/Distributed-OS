@@ -195,7 +195,7 @@ class Net:
             return True
         return False
 
-    def __calc_ч2transfer_time(self,
+    def __calc_transfer_time(self,
                                task: Task,
                                bandwidth
                                ):
