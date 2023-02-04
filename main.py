@@ -3,7 +3,8 @@ import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
-import visualization
+from bokeh.io import output_file, show
+from bokeh.plotting import figure, from_networkx
 
 @dataclass(frozen=True)  # (можно просто tuple или как удобнее)
 class Task:
@@ -142,18 +143,25 @@ class Net:
             p1 = a[p1]
             p.insert(0, e[p1])
         return p
-
+    def packet_vis(self):
+        pass
+    def Visualization_Graph(self,):
+        for i in range(18000):
+            plot = figure(title="Networkx Demonstration", x_range=(-11, 11), y_range=(-11, 11),
+                          tools="", toolbar_location=None)
+            Our_Graph = from_networkx(self.G, nx.spring_layout, scale=2, center=(0, 0))
+            plot.renderers.append(Our_Graph)
+            output_file(f'images/fig--{i}.png')
 
 class Simulation:
     def __init__(self, ):
         self.nodes: list[Node]  # набор узлов
-        self.New_G = Net.G
         # соколько щагов проссимулировать. 1 шаг == 20мс (автоматически дает нам в среднем залержку в 10мс) (180.000 == 1 час)
         self.steps: int
         self.net: Net
 
     # перемещения узлом и многое другое можно визуализировать через анимации. То есть в процессе строить анимацию, а в конце записать ее в файл .gif
-        def visualization(self,):
+    def visualization(self,):
         frames = []
         duration1 = [0]
         Start = True
