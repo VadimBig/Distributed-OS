@@ -93,10 +93,10 @@ def eq_circle(x0, y0, xc, yc, w, direction, t):
 
     На выход - положение точки в момент времени `t`: `(x, y)`
     """
-
-    phi0 = math.atan(y0 / x0)
-    x = ((x0 - xc)**2 + (y0 - yc)**2)**0.5 * math.cos(phi0 + w * t * direction)
-    y = ((x0 - xc)**2 + (y0 - yc)**2)**0.5 * math.sin(phi0 + w * t * direction)
+    r = ((x0 - xc)**2 + (y0 - yc)**2)**0.5
+    phi0 = math.acos((yc - y0) / r)
+    x = r * math.cos(phi0 + w * t * direction)
+    y = r * math.sin(phi0 + w * t * direction)
 
     return (x, y)
 
@@ -111,7 +111,7 @@ def eq_partline(x0, y0, x_start, y_start, x_end, y_end, v, t, direction):
 
     На выход - координаты точки и направление: `(x1, y1, direction)`
     """
-    phi = math.asin((y_start - y_end) / (x_start - x_end))
+    phi = math.atan((y_start - y_end) / (x_start - x_end))
     delta_x = math.cos(phi) * v * t
     delta_y = math.sin(phi) * v * t
 
@@ -122,6 +122,7 @@ def eq_partline(x0, y0, x_start, y_start, x_end, y_end, v, t, direction):
             x1 = x_end - (x1 - x_end)
             y1 = y_end - (y1 - y_end)
             direction = -1
+            
     else:
         x1 = x0 - delta_x
         y1 = y0 - delta_y
