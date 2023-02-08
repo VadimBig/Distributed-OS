@@ -10,7 +10,7 @@ const_way_eq5 = get_constant_wayeq(25,0)
 
 # test nodes
 node1 = Node(power=10,way_equation=const_way_eq1)
-node2 = Node(power=10000,way_equation=const_way_eq2)
+node2 = Node(power=1000,way_equation=const_way_eq2)
 node3 = Node(power=100,way_equation=const_way_eq3)
 node4 = Node(power=100,way_equation=const_way_eq4)
 node5 = Node(power=100,way_equation=const_way_eq5)
@@ -29,7 +29,7 @@ bandwidth_formula = lambda max_dist, max_bandwidth: (lambda d: max_bandwidth - d
 net = Net(bandwidth_formula=bandwidth_formula, nodes=nodes_dict)
 
 # test tasks
-task1 = Task(calc_size=10000, transfer_weight=1,transfer_weight_return=1,customer_id=1)
+task1 = Task(calc_size=1000000, transfer_weight=1000,transfer_weight_return=1,customer_id=1)
 task2 = Task(calc_size=1000, transfer_weight=1000,transfer_weight_return=1000,customer_id=2)
 task3 = Task(calc_size=1000, transfer_weight=1000,transfer_weight_return=1000,customer_id=3)
 task4 = Task(calc_size=1000, transfer_weight=1000,transfer_weight_return=1000,customer_id=4)
@@ -44,6 +44,8 @@ net.add_task(1,task=task1)
 
 # check scheduling (1 task must go to 2nd node)
 net.schedule(0,to_schedule=[(1,task1)])
+net.update(3,3)
+net.update(12,12-3)
 print(net.nodes)
 
 """
