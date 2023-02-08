@@ -25,14 +25,11 @@ class Node:
     """
 
     def __init__(self,
-                 x_0: float,  # position at the begining of a simualtion
-                 y_0: float,
                  power: float,  # computing power
                  # f : (time:float) -> (x:float, y:float)
                  way_equation: Callable,
                  ):
-        self.x = x_0
-        self.y = y_0
+        self.x, self.y = way_equation(0)
         self.power = power
         self.isActive = True  # True if the node is capable of interacting with others
         self.isCalculating = False  # True if the node is computing some task
