@@ -3,7 +3,8 @@ import networkx as nx
 import numpy as np
 from collections import deque
 from typing import Callable, Iterable
-from brownian import brownian, constraints_to_brownian, eq_circle, eq_partline, eq_sin_or_cos
+from brownian import brownian, constraints_to_brownian
+from trajectory_equations import eq_circle, eq_partline, eq_sin_or_cos
 import json
 import math
 
@@ -24,7 +25,7 @@ class Node:
         This class simulates behavior of ...
     """
 
-    def __init__(self,
+    def __init__(self,  
                  power: float,  # computing power
                  # f : (time:float) -> (x:float, y:float)
                  way_equation: Callable,
@@ -38,11 +39,8 @@ class Node:
         self.tasks = deque()  # queue of tasks for node to compute
         self.current_progress = 0
 
-        self.w = 0
-        self.direction = direction
-
-    def __repr__(self):
-        return repr(f'{(self.x, self.y)}, {self.power}')
+        # self.w = 0
+        # self.direction = direction
 
     def __update_state(self, ):
         self.isCalculating = bool(self.tasks)
@@ -101,7 +99,7 @@ class Node:
         self.isTransfering = False
 
     def move(self, t):
-        x, y = self.way_equation(self.x, self.y, t)
+        x, y = self.way_equation(t)
         self.x = x
         self.y = y
 
@@ -116,6 +114,8 @@ class Node:
              'current_progress': self.current_progress
              }
         return str(d)
+    def __repr__(self):
+        return self.__str__()
 
 # расстояние между узлами
 
@@ -127,7 +127,7 @@ def dist(a, b):
 class Net:
     def __init__(
         self,
-        # bandwidth_formula: max_bandwidth -> (f: distance -> bandwidth)
+        # bandwidth_formula: max_distance, max_bandwidth -> (f: distance -> bandwidth)
         bandwidth_formula,
         nodes: dict
     ):
@@ -138,7 +138,7 @@ class Net:
         # максимальное расстояние на котором поддерживается свзять 30м. Если расстояние больше, то связь разорвана
         self.max_distance = 30
         # считаем силу сигнала в зависимости от расстояния по этой формуле. должна учитывать max_bandwidth
-        self.bandwidth_formula = bandwidth_formula(self.max_distance)
+        self.bandwidth_formula = bandwidth_formula(self.max_distance, self.max_bandwidth)
 
         # we need variable to store state of the network.
         # this variable must store information about following:
@@ -170,22 +170,23 @@ class Net:
             Call this function to move the nodes according to their 
             way_equation formulas.
         """
-        for node in self.nodes:
-            node.move(t)
+        for node_id in self.nodes.keys():
+            self.nodes[node_id].move(t)
 
     # update graph's components
     def update_components(self,):
         # при переопределении ребра, информация о прошлом ребре стирается
-        for i in range(len(self.nodes)):
-            for j in range(i, len(self.nodes)):
-                x = self.nodes[i]
-                y = self.nodes[j]
+        keys = list(self.nodes.keys())
+        for i in range(len(keys)):
+            for j in range(i, len(keys)):
+                key_i = keys[i]
+                key_j = keys[j]
+                x = self.nodes[key_i]
+                y = self.nodes[key_j]
                 d = dist(x, y)
-                if d < self.max_distance:
-                    self.G.add_edge(x.node_id, y.node_id,
-                                    weight=self.bandwidth_formula(d))
-                else:
-                    self.G.remove_edge(x.node_id, y.node_id)
+                self.G.add_edge(key_i, key_j, weight=self.bandwidth_formula(d))
+                if d >= self.max_distance:
+                    self.G.remove_edge(key_i, key_j)
 
     def __check_connection(self, id_1, id_2):
         if nx.shortest_path(self.G, id_1, id_2):
@@ -305,7 +306,7 @@ class Net:
                 'node_id' (int) - an id of the task performer
         '''
         all_reachable_nodes = list(nx.shortest_path(self.G, node_id).keys())
-        min_cost = self.get_loading()
+        min_cost = self.nodes[node_id].get_loading()
         optimal_performer = node_id
         route_to_performer = [node_id]
         route_bandwidth = float('inf')
@@ -337,7 +338,7 @@ class Net:
         return node_id, [node_id], self.nodes[node_id].get_loading(), float('inf')
 
     def shortest_path(self, from_, to_):
-        self.__update_components()
+        self.update_components()
         D = nx.DiGraph()
         for i in self.G.nodes:
             for j in self.G.nodes:
@@ -502,102 +503,103 @@ def generate_tasks(list_node_ids: list[str]) -> list[tuple]:
     return sorted(output, key=lambda x: x[1])
 
 
-# загружаем json с описанием сценария
-number_scenario = 1
+if __name__ == "__main__":
+    # загружаем json с описанием сценария
+    number_scenario = 1
 
-file = open(fr'.\scenario\config_scenario_{number_scenario}.json')
-scenario = json.load(file)
+    file = open(fr'.\scenario\config_scenario_{number_scenario}.json')
+    scenario = json.load(file)
 
-count_devices = scenario['count_devices']
+    count_devices = scenario['count_devices']
 
-# могут ли девайсы выключиться во время симуляции
-poweroff_posibility = scenario['poweroff_posibility']
+    # могут ли девайсы выключиться во время симуляции
+    poweroff_posibility = scenario['poweroff_posibility']
 
-nodes = dict()
+    nodes = dict()
 
-# Создаём словарь узлов {node_id: Node}
-for node_id in scenario['nodes']:
-    x0, y0 = scenario['nodes'][node_id]['x'], scenario['nodes'][node_id]['y']
-    power = scenario['nodes'][node_id]['power']
-    way_eq = scenario['nodes'][node_id]['way_eq']
+    # Создаём словарь узлов {node_id: Node}
+    for node_id in scenario['nodes']:
+        x0, y0 = scenario['nodes'][node_id]['x'], scenario['nodes'][node_id]['y']
+        power = scenario['nodes'][node_id]['power']
+        way_eq = scenario['nodes'][node_id]['way_eq']
 
-    # задаём уравнение движения для узла
-    if way_eq == "static":
-        def way_equation(x, y, d, t): return (x0, y0)
-        # way_equation = lambda t: (x0, y0)
-    elif way_eq == "circle":
-        w = scenario['nodes'][node_id]['w']
-        # её надо хранить в ноде
-        direction = scenario['nodes'][node_id]['direction']
-        xc, yc = scenario['nodes'][node_id]['xc'], scenario['nodes'][node_id]['yc']
+        # задаём уравнение движения для узла
+        if way_eq == "static":
+            def way_equation(x, y, d, t): return (x0, y0)
+            # way_equation = lambda t: (x0, y0)
+        elif way_eq == "circle":
+            w = scenario['nodes'][node_id]['w']
+            # её надо хранить в ноде
+            direction = scenario['nodes'][node_id]['direction']
+            xc, yc = scenario['nodes'][node_id]['xc'], scenario['nodes'][node_id]['yc']
 
-        def way_equation(x0, y0, d, t): return eq_circle(
-            x0, y0, xc, yc, w, d, t)
-    elif way_eq == "partline":
-        x_s, y_s = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['y_start']
-        x_e, y_e = scenario['nodes'][node_id]['x_end'], scenario['nodes'][node_id]['y_end']
-        w, direction = scenario['nodes'][node_id]['w'], 1
+            def way_equation(x0, y0, d, t): return eq_circle(
+                x0, y0, xc, yc, w, d, t)
+        elif way_eq == "partline":
+            x_s, y_s = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['y_start']
+            x_e, y_e = scenario['nodes'][node_id]['x_end'], scenario['nodes'][node_id]['y_end']
+            w, direction = scenario['nodes'][node_id]['w'], 1
 
-        def way_equation(x0, y0, d, t): return eq_partline(
-            x0, y0, x_s, y_s, x_e, y_e, w, t, d)
-    elif way_eq == "sin_or_cos":
-        x_s, x_e = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['x_end']
-        w = scenario['nodes'][node_id]['w']
-        its_sin = scenario['nodes'][node_id]['sin']
+            def way_equation(x0, y0, d, t): return eq_partline(
+                x0, y0, x_s, y_s, x_e, y_e, w, t, d)
+        elif way_eq == "sin_or_cos":
+            x_s, x_e = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['x_end']
+            w = scenario['nodes'][node_id]['w']
+            its_sin = scenario['nodes'][node_id]['sin']
 
-        def way_equation(x0, y, d, t): return eq_sin_or_cos(
-            x0, y0, x_s, x_e, w, t, d, sin=its_sin)
-    elif way_eq == "brownian":
-        n = 1
-        w = scenario['nodes'][node_id]['w']
-        x_s, y_s = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['y_start']
-        x_e, y_e = scenario['nodes'][node_id]['x_end'], scenario['nodes'][node_id]['y_end']
-        def way_equation(x0, y0, d, t): return constraints_to_brownian(
-            brownian(x0, y0, n, t, w, out=None), x_s, y_s, x_e, y_e)
-    else:
-        print(
-            f"Для узла {node_id} задано не реализованное уравнение движения - {way_eq}.")
-        raise ValueError
+            def way_equation(x0, y, d, t): return eq_sin_or_cos(
+                x0, y0, x_s, x_e, w, t, d, sin=its_sin)
+        elif way_eq == "brownian":
+            n = 1
+            w = scenario['nodes'][node_id]['w']
+            x_s, y_s = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['y_start']
+            x_e, y_e = scenario['nodes'][node_id]['x_end'], scenario['nodes'][node_id]['y_end']
+            def way_equation(x0, y0, d, t): return constraints_to_brownian(
+                brownian(x0, y0, n, t, w, out=None), x_s, y_s, x_e, y_e)
+        else:
+            print(
+                f"Для узла {node_id} задано не реализованное уравнение движения - {way_eq}.")
+            raise ValueError
 
-    # задаём узел
-    nodes[node_id] = Node(scenario['nodes'][node_id]['x'], scenario['nodes'][node_id]
-                          ['y'], scenario['nodes'][node_id]['power'], way_equation, direction)
+        # задаём узел
+        nodes[node_id] = Node(scenario['nodes'][node_id]['x'], scenario['nodes'][node_id]
+                            ['y'], scenario['nodes'][node_id]['power'], way_equation, direction)
 
-# генерируем сценарии
-node_ids = list(scenario['nodes'].keys())
-tasks = generate_tasks(node_ids)
-# print(tasks)
-
-
-def bandwidth_formula(max_distance): return lambda x: 1/x
+    # генерируем сценарии
+    node_ids = list(scenario['nodes'].keys())
+    tasks = generate_tasks(node_ids)
+    # print(tasks)
 
 
-# задаём сеть
-net = Net(bandwidth_formula, nodes)
+    def bandwidth_formula(max_distance): return lambda x: 1/x
 
 
-# 1. Сценарии. Разобрать с генератором задач
-# 2. Переменная хранения состояния сети, интерфейс для использования в Simulator (описан в init класса Net)
-# 3. Написать примитивный скедулинг задач. (из описания ниже)
-# 4. дописать функцию self.run()
-# 5. Визуализация
-# 6. Вывод нужной информации в какой-то файлик. Определится с измеряемыми метриками симуляции.
-# 7. Подумать над гипотезой о том, что распр. вычисления не эффективны. Подумать как ее проверить (мб александру)
+    # задаём сеть
+    net = Net(bandwidth_formula, nodes)
 
-"""
-помним про некоторые вещи
-1) нужно будет сделать baseline - скедулер выбирает в качестве исполнителя исходный узел, нет передачи данных по сети, нет маршрутов
-2) в процессе выполнения задач нужно иметь некоторый счетчик прогресса выполнения задач и передачи данных, чтобы было понятно, что задача выполнена
-3) выполненная задача это еще не конец - необходимо вернуть результат исходному устройству
-4) алгоритм выбора исполненителя:
-    в компоненте связности каждому ребру присваиваем transfer_weight / bandwidth
-    запускаем беллмана форда для source -> получаем расстояния до всех других вершин
-    добавляем к каждму расстоянию calc_size / power
-    выбираем наименьшее число из полученных - это тот кто выполнит нашу задачу быстрее всех с учетом передачи данных
 
-    так как нам еще нужно вернуть результат в source, то на первом этапе прибавляем еще аналогичное слагаемое для transfer_weight_return
+    # 1. Сценарии. Разобрать с генератором задач
+    # 2. Переменная хранения состояния сети, интерфейс для использования в Simulator (описан в init класса Net)
+    # 3. Написать примитивный скедулинг задач. (из описания ниже)
+    # 4. дописать функцию self.run()
+    # 5. Визуализация
+    # 6. Вывод нужной информации в какой-то файлик. Определится с измеряемыми метриками симуляции.
+    # 7. Подумать над гипотезой о том, что распр. вычисления не эффективны. Подумать как ее проверить (мб александру)
 
-5) по хорошему нам нужен алгоритм предсказания, но придумать его - не слишком очевидная затея, так что пока без него
-6) не стройте вырожденные сценарии. Размер данных для передачи по сети не должен быть слишком большой
-7) количество узлов 3-15
-"""
+    """
+    помним про некоторые вещи
+    1) нужно будет сделать baseline - скедулер выбирает в качестве исполнителя исходный узел, нет передачи данных по сети, нет маршрутов
+    2) в процессе выполнения задач нужно иметь некоторый счетчик прогресса выполнения задач и передачи данных, чтобы было понятно, что задача выполнена
+    3) выполненная задача это еще не конец - необходимо вернуть результат исходному устройству
+    4) алгоритм выбора исполненителя:
+        в компоненте связности каждому ребру присваиваем transfer_weight / bandwidth
+        запускаем беллмана форда для source -> получаем расстояния до всех других вершин
+        добавляем к каждму расстоянию calc_size / power
+        выбираем наименьшее число из полученных - это тот кто выполнит нашу задачу быстрее всех с учетом передачи данных
+
+        так как нам еще нужно вернуть результат в source, то на первом этапе прибавляем еще аналогичное слагаемое для transfer_weight_return
+
+    5) по хорошему нам нужен алгоритм предсказания, но придумать его - не слишком очевидная затея, так что пока без него
+    6) не стройте вырожденные сценарии. Размер данных для передачи по сети не должен быть слишком большой
+    7) количество узлов 3-15
+    """
