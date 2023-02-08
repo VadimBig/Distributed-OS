@@ -54,13 +54,13 @@ class Node:
                 new_tasks.append(task)
         self.tasks = new_tasks
 
-    def calc(self, timedelta: float) -> list[Task]:
+    def calc(self, timedelta: float) -> Task:
         """
             This method simulates process of node computing the tasks. 
             timedelta: float - computing time
         """
         self.current_progress += self.power * timedelta
-        finished_task = []
+        finished_task = None
         if self.tasks and self.current_progress - self.tasks[0].calc_size >= 0:
             self.current_progress -= self.tasks[0].calc_size
             finished_task = self.tasks.popleft()
@@ -134,8 +134,10 @@ class Net:
         self,
         # bandwidth_formula: max_distance, max_bandwidth -> (f: distance -> bandwidth)
         bandwidth_formula,
-        nodes: dict
+        nodes: dict,
+        debug_info = True
     ):
+        self.debug_info = True
         self.nodes = nodes  # набор узлов в формате node_id : Node
         self.G = nx.Graph()  # может иметь произвольное количество компонент связности, должен динамически меняться в зависимотсти от положение узлов
         # 100 мб/c. Меняет в зависимости от растояния по нелинейным формулам
@@ -155,7 +157,7 @@ class Net:
         self.performers = Net.__init_performers(self.nodes.keys())
         # {node_id: destination of data transmission} # if destination is 0, then a node doesn't transimit data
         self.destinations = Net.__init_destinations(self.nodes.keys())
-
+        self.to_be_sent_back = []
         self.transfers = []
 
     def __init_destinations(node_ids):
@@ -200,18 +202,22 @@ class Net:
 
     def __calc_transfer_time(self,
                                task: Task,
-                               bandwidth
+                               bandwidth,
+                               is_result=False
                                ):
+        if is_result:
+            return task.transfer_weight_return/bandwidth
         return task.transfer_weight/bandwidth
 
     def __start_transfering(self,
                             task: Task,
                             bandwidth,
                             route,
-                            timestamp
+                            timestep,
+                            is_result=False
                             ):
-        end_time = timestamp + self.__calc_transfer_time(task, bandwidth)
-        self.transfers.append((task, route, end_time))
+        end_time = timestep + self.__calc_transfer_time(task, bandwidth, is_result=is_result)
+        self.transfers.append((task, route, end_time, is_result))
         for node_id in route:
             self.nodes[node_id].start_transfer()
 
@@ -219,7 +225,7 @@ class Net:
                            transfer,
                            finished
                            ):
-        task, route, end_time = transfer
+        task, route, end_time, is_result = transfer
         for node_id in route:
             self.nodes[node_id].end_transfer()
         if finished: 
@@ -227,23 +233,29 @@ class Net:
 
     def add_task(self, customer_id, task: Task):
         self.nodes[customer_id].add_task(task)
-        print(self.nodes[customer_id])
+        if self.debug_info: print(f"TASK `{task}` WAS GIVEN TO THE NODE {customer_id}")
+    
+    def __finish_task(self, task):
+        customer_id = task.customer_id
+        self.nodes[customer_id].forget_tasks([task])
 
     def update(self, timestep, timedelta):
-        to_be_sent_back = []
 
         self.move(timestep)
         self.update_components()
         # transferings update
         transfers_to_continue = []
         transfers_to_stop = []
+        transfers_calc_results_to_finish = []
         transfers_to_finish = []
         for transfer in self.transfers:
-            _, route, end_time = transfer
-
+            task, route, end_time, is_result = transfer
             # CHECK IF THE TRANSFERS ARE STILL HAPPENING
             if end_time <= timestep:
-                transfers_to_finish.append(transfer)
+                if task is None:
+                    transfers_calc_results_to_finish.append(transfer)
+                else:
+                    transfers_to_finish.append(transfer)
             # CHECK IF THE TRANSFERS ARE STILL POSSIBLE
             for i in range(len(route)):
                 for j in range(i+1, len(route)):
@@ -253,15 +265,30 @@ class Net:
         transfers_to_continue = [transfer for transfer in self.transfers if transfer not in transfers_to_stop and transfer not in transfers_to_finish]
         
         ## debug
-        print('to continue: ', transfers_to_continue)
-        print('to finish: ', transfers_to_finish)
-        print('to stop: ', transfers_to_stop)
+        if self.debug_info:
+            print('TRANSFERS TO CONTINUE:', transfers_to_continue)
+            print('TRANSFERS TO FINISH:', transfers_to_finish)
+            print('TRANSFERS TO STOP', transfers_to_stop)
 
         self.transfers = transfers_to_continue
         for transfer in transfers_to_stop:
             self.__stop_transfering(transfer,finished=False)
         for transfer in transfers_to_finish:
             self.__stop_transfering(transfer,finished=True)
+
+        # TRANSFER RESULTS OF COMPUTATIONS
+        not_sended = []
+        for performer_id, finished_task in self.to_be_sent_back:
+            customer_id = finished_task.customer_id
+            if customer_id != performer_id:
+                route, cost = self.shortest_path(performer_id, customer_id)
+                if cost == -1:
+                    not_sended.append((performer_id, finished_task))
+                else:
+                    self.__start_transfering(finished_task, cost, route, timestep, is_results=True)
+            else:
+                self.__finish_task(finished_task)
+        self.to_be_sent_back = not_sended
 
         for node_id in self.nodes.keys():
             if self.destinations[node_id]:
@@ -276,12 +303,13 @@ class Net:
                 customer_id = task.customer_id
                 if not self.__check_connection(node_id, customer_id):
                     lost_connections.add(customer_id)
-            self.nodes[node_id].forget_tasks(lost_connections)
+            if lost_connections: self.nodes[node_id].forget_tasks(lost_connections)
             # collect data to be sent back
             finished_task = self.nodes[node_id].calc(timedelta)
-            to_be_sent_back.append(finished_task)
+            if finished_task:
+                self.to_be_sent_back.append((node_id, finished_task))
 
-        return to_be_sent_back
+        # return 0
         # 1) проверить что передача данных все еще идет и все в порядке (нет разрыва сети). Иначе - обработать ситуацию (РЕАЛИЗОВАНО)
         # 2) проверить что вычисления все еще имеют смысл (тот для кого мы вычисляем все еще в сети). Иначе - обработать ситуацию (РЕАЛИЗОВАНО)
         # 3) если первые два условия не выполняются, то можно написать алгоритмы опитмизации,
@@ -290,7 +318,7 @@ class Net:
     def schedule(self,
                  timestamp,  # current time (in the simulation)
                  to_schedule,  # list of tuples (node_id, Task)
-                 mode='basic'  # possible values: basic, elementary
+                 mode='basic',  # possible values: basic, elementary
                  ):
 
         # A PROBLEM TO DISCUSS:
@@ -304,11 +332,15 @@ class Net:
                 "Wrong value encountered in `mode` argument. Possible options are: basic, elementary")
             raise ValueError
 
+        if self.debug_info: print('------------ SCHEDULING STARTED ------------')
         for node_id, task in to_schedule:
             opt_performer, route, _, route_bandwidth = scheduler(
                 node_id=node_id, task=task)
-            print('started transfering:', task, route)
             self.__start_transfering(task, route_bandwidth, route, timestamp)
+            if self.debug_info: print('TASK TRANSFERING STARTED:', task, route)
+        if self.debug_info: print('------------ SCHEDULING FINISHED ------------')
+        
+
 
     def basic_scheduler(self,
                         node_id,
@@ -332,24 +364,23 @@ class Net:
                 'node_id' (int) - an id of the task performer
         '''
         all_reachable_nodes = list(nx.shortest_path(self.G, node_id).keys())
-        min_cost = self.nodes[node_id].get_loading()
+        min_cost = self.nodes[node_id].get_loading() + task.calc_size / self.nodes[node_id].power
         optimal_performer = node_id
         route_to_performer = [node_id]
         route_bandwidth = float('inf')
-        
         for p_id in all_reachable_nodes:
             route, route_cost = self.shortest_path(node_id, p_id)
             if route_cost < 0:
                 continue
             overall_cost = (task.transfer_weight + task.transfer_weight_return)/route_cost + \
-                self.nodes[p_id].get_loading()
-            print(self.nodes[p_id].get_loading())
+                self.nodes[p_id].get_loading() + task.calc_size / self.nodes[p_id].power
+            if self.debug_info: print('OVERALL_COST: ', overall_cost, 'NODE ID: ', p_id)
             if overall_cost < min_cost:
                 min_cost = overall_cost
                 optimal_performer = p_id
                 route_to_performer = route
                 route_bandwidth = route_cost
-        print('task scheduled:', optimal_performer, route_to_performer, min_cost, route_bandwidth)
+        if self.debug_info: print(f"OPTIMAL PERFORMER {optimal_performer}, OPTIMAL ROUTE {route_to_performer}")
         return optimal_performer, route_to_performer, min_cost, route_bandwidth
 
     def elementaty_scheduler(self,

@@ -39,14 +39,13 @@ net.update_components()
 # print(net.G.edges)
 
 # check add_task method
-net.add_task(1,task=task1)
+# net.add_task(1,task=task1)
 # print(net.nodes[1])
 
 # check scheduling (1 task must go to 2nd node)
 net.schedule(0,to_schedule=[(1,task1)])
 net.update(3,3)
 net.update(12,12-3)
-print(net.nodes)
 
 """
 TODO
