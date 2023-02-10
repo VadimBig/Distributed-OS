@@ -6,7 +6,6 @@ from typing import Callable, Iterable
 from brownian import brownian, constraints_to_brownian
 from trajectory_equations import eq_circle, eq_partline, eq_sin_or_cos
 import json
-import math
 
 
 @dataclass(frozen=True)  # (можно просто tuple или как удобнее)
@@ -25,7 +24,7 @@ class Node:
         This class simulates behavior of ...
     """
 
-    def __init__(self,  
+    def __init__(self,
                  power: float,  # computing power
                  # f : (time:float) -> (x:float, y:float)
                  way_equation: Callable,
@@ -37,7 +36,7 @@ class Node:
         self.isTransfering = False  # True if the node is transfering some data
         self.way_equation = way_equation
         self.tasks = deque()  # queue of tasks for node to compute
-        self.given_tasks = deque() # queue for tasks which are given to another customer
+        self.given_tasks = deque()  # queue for tasks which are given to another customer
         self.current_progress = 0
 
         # self.w = 0
@@ -47,12 +46,17 @@ class Node:
         self.isCalculating = bool(self.tasks)
 
     def forget_tasks(self, to_forget: Iterable):
-        print('forgetting tasks: ', to_forget)
         new_tasks = deque()
         for task in self.tasks:
             if task.customer_id not in to_forget:
                 new_tasks.append(task)
         self.tasks = new_tasks
+
+    def del_task(self, task: Task, from_given=False):
+        if task in self.tasks:
+            self.tasks.remove(task)
+        if from_given and task in self.given_tasks:
+            self.given_tasks.remove(task)
 
     def calc(self, timedelta: float) -> Task:
         """
@@ -119,6 +123,7 @@ class Node:
              'current_progress': self.current_progress
              }
         return str(d)
+
     def __repr__(self):
         return self.__str__()
 
@@ -135,9 +140,9 @@ class Net:
         # bandwidth_formula: max_distance, max_bandwidth -> (f: distance -> bandwidth)
         bandwidth_formula,
         nodes: dict,
-        debug_info = True
+        debug_info=True
     ):
-        self.debug_info = True
+        self.debug_info = debug_info
         self.nodes = nodes  # набор узлов в формате node_id : Node
         self.G = nx.Graph()  # может иметь произвольное количество компонент связности, должен динамически меняться в зависимотсти от положение узлов
         # 100 мб/c. Меняет в зависимости от растояния по нелинейным формулам
@@ -145,32 +150,10 @@ class Net:
         # максимальное расстояние на котором поддерживается свзять 30м. Если расстояние больше, то связь разорвана
         self.max_distance = 30
         # считаем силу сигнала в зависимости от расстояния по этой формуле. должна учитывать max_bandwidth
-        self.bandwidth_formula = bandwidth_formula(self.max_distance, self.max_bandwidth)
-
-        # we need variable to store state of the network.
-        # this variable must store information about following:
-        # 1. customers and performers of each task
-        # 2. sources and destinations of each node
-
-        self.task_customers = {}  # {task_id : node_id (node is a customer)}
-        # {node_id: list of ids of performers}
-        self.performers = Net.__init_performers(self.nodes.keys())
-        # {node_id: destination of data transmission} # if destination is 0, then a node doesn't transimit data
-        self.destinations = Net.__init_destinations(self.nodes.keys())
+        self.bandwidth_formula = bandwidth_formula(
+            self.max_distance, self.max_bandwidth)
         self.to_be_sent_back = []
         self.transfers = []
-
-    def __init_destinations(node_ids):
-        d = dict()
-        for id in node_ids:
-            d[id] = 0
-        return d
-
-    def __init_performers(node_ids):
-        d = dict()
-        for id in node_ids:
-            d[id] = []
-        return d
 
     def move(self, t):
         """
@@ -186,10 +169,8 @@ class Net:
         keys = list(self.nodes.keys())
         for i in range(len(keys)):
             for j in range(i, len(keys)):
-                key_i = keys[i]
-                key_j = keys[j]
-                x = self.nodes[key_i]
-                y = self.nodes[key_j]
+                key_i, key_j = keys[i], keys[j]
+                x, y = self.nodes[key_i], self.nodes[key_j]
                 d = dist(x, y)
                 self.G.add_edge(key_i, key_j, weight=self.bandwidth_formula(d))
                 if d >= self.max_distance:
@@ -201,10 +182,10 @@ class Net:
         return False
 
     def __calc_transfer_time(self,
-                               task: Task,
-                               bandwidth,
-                               is_result=False
-                               ):
+                             task: Task,
+                             bandwidth,
+                             is_result=False
+                             ):
         if is_result:
             return task.transfer_weight_return/bandwidth
         return task.transfer_weight/bandwidth
@@ -216,7 +197,9 @@ class Net:
                             timestep,
                             is_result=False
                             ):
-        end_time = timestep + self.__calc_transfer_time(task, bandwidth, is_result=is_result)
+        # call this function to begin transfer of task, or results of its computation
+        end_time = timestep + \
+            self.__calc_transfer_time(task, bandwidth, is_result=is_result)
         self.transfers.append((task, route, end_time, is_result))
         for node_id in route:
             self.nodes[node_id].start_transfer()
@@ -225,22 +208,35 @@ class Net:
                            transfer,
                            finished
                            ):
+        # stop transfering,
+        # (if transfering was successfull)
+        # If a task was tranfered, we call `add_task` to assign this task to a new performer
+        # If a computation results were transfered, we call `SOME_FUNCTION` to finish task lifetime
         task, route, end_time, is_result = transfer
         for node_id in route:
             self.nodes[node_id].end_transfer()
-        if finished: 
-            self.add_task(route[-1], task)
+        if finished:
+            if is_result:
+                self.__finish_task(route[0], task)
+            else:
+                self.add_task(route[-1], task)
 
-    def add_task(self, customer_id, task: Task):
-        self.nodes[customer_id].add_task(task)
-        if self.debug_info: print(f"TASK `{task}` WAS GIVEN TO THE NODE {customer_id}")
-    
-    def __finish_task(self, task):
+    def add_task(self, performer_id, task: Task):
+        # assign task to perfortmer
+        self.nodes[performer_id].add_task(task)
+        if self.debug_info:
+            print(f"TASK `{task}` WAS GIVEN TO THE NODE {performer_id}")
+
+    def __finish_task(self, performer_id, task, timestep):
+        # call this function in case your task is done and results were transfered back to customer
         customer_id = task.customer_id
-        self.nodes[customer_id].forget_tasks([task])
+        self.nodes[performer_id].del_task(task)
+        self.nodes[customer_id].del_task(task, from_given=True)
+        # logger.log()
+
 
     def update(self, timestep, timedelta):
-
+        # update general state of net
         self.move(timestep)
         self.update_components()
         # transferings update
@@ -248,11 +244,12 @@ class Net:
         transfers_to_stop = []
         transfers_calc_results_to_finish = []
         transfers_to_finish = []
+
         for transfer in self.transfers:
             task, route, end_time, is_result = transfer
             # CHECK IF THE TRANSFERS ARE STILL HAPPENING
             if end_time <= timestep:
-                if task is None:
+                if is_result:
                     transfers_calc_results_to_finish.append(transfer)
                 else:
                     transfers_to_finish.append(transfer)
@@ -261,10 +258,12 @@ class Net:
                 for j in range(i+1, len(route)):
                     if not self.__check_connection(route[i], route[j]):
                         transfers_to_stop.append(transfer)
+                        # exit from outer loop
                         break
-        transfers_to_continue = [transfer for transfer in self.transfers if transfer not in transfers_to_stop and transfer not in transfers_to_finish]
-        
-        ## debug
+        transfers_to_continue = [
+            transfer for transfer in self.transfers if transfer not in transfers_to_stop and transfer not in transfers_to_finish]
+
+        # debug
         if self.debug_info:
             print('TRANSFERS TO CONTINUE:', transfers_to_continue)
             print('TRANSFERS TO FINISH:', transfers_to_finish)
@@ -272,22 +271,25 @@ class Net:
 
         self.transfers = transfers_to_continue
         for transfer in transfers_to_stop:
-            self.__stop_transfering(transfer,finished=False)
+            self.__stop_transfering(transfer, finished=False)
         for transfer in transfers_to_finish:
-            self.__stop_transfering(transfer,finished=True)
+            self.__stop_transfering(transfer, finished=True)
+        for transfer in transfers_calc_results_to_finish:
+            self.__stop_transfering(transfer, finished=True, is_result=True)
 
-        # TRANSFER RESULTS OF COMPUTATIONS
+        # START TRANSFER RESULTS OF COMPUTATIONS
         not_sended = []
         for performer_id, finished_task in self.to_be_sent_back:
             customer_id = finished_task.customer_id
             if customer_id != performer_id:
                 route, cost = self.shortest_path(performer_id, customer_id)
-                if cost == -1:
+                if cost == -1:  # if there are no path between performer and customer?
                     not_sended.append((performer_id, finished_task))
                 else:
-                    self.__start_transfering(finished_task, cost, route, timestep, is_results=True)
+                    self.__start_transfering(
+                        finished_task, cost, route, timestep, is_results=True)
             else:
-                self.__finish_task(finished_task)
+                self.__finish_task(performer_id, finished_task, timestep)
         self.to_be_sent_back = not_sended
 
         for node_id in self.nodes.keys():
@@ -298,12 +300,13 @@ class Net:
                     self.destinations[node_id] = 0
 
             # забываем о тех задачах, которые были выданы узлами, покинувшими компоненту связности узла
-            lost_connections = set()    
+            lost_connections = set()
             for task in self.nodes[node_id].tasks:
                 customer_id = task.customer_id
                 if not self.__check_connection(node_id, customer_id):
                     lost_connections.add(customer_id)
-            if lost_connections: self.nodes[node_id].forget_tasks(lost_connections)
+            if lost_connections:
+                self.nodes[node_id].forget_tasks(lost_connections)
             # collect data to be sent back
             finished_task = self.nodes[node_id].calc(timedelta)
             if finished_task:
@@ -332,15 +335,16 @@ class Net:
                 "Wrong value encountered in `mode` argument. Possible options are: basic, elementary")
             raise ValueError
 
-        if self.debug_info: print('------------ SCHEDULING STARTED ------------')
+        if self.debug_info:
+            print('------------ SCHEDULING STARTED ------------')
         for node_id, task in to_schedule:
             opt_performer, route, _, route_bandwidth = scheduler(
                 node_id=node_id, task=task)
             self.__start_transfering(task, route_bandwidth, route, timestamp)
-            if self.debug_info: print('TASK TRANSFERING STARTED:', task, route)
-        if self.debug_info: print('------------ SCHEDULING FINISHED ------------')
-        
-
+            if self.debug_info:
+                print('TASK TRANSFERING STARTED:', task, route)
+        if self.debug_info:
+            print('------------ SCHEDULING FINISHED ------------')
 
     def basic_scheduler(self,
                         node_id,
@@ -364,7 +368,8 @@ class Net:
                 'node_id' (int) - an id of the task performer
         '''
         all_reachable_nodes = list(nx.shortest_path(self.G, node_id).keys())
-        min_cost = self.nodes[node_id].get_loading() + task.calc_size / self.nodes[node_id].power
+        min_cost = self.nodes[node_id].get_loading(
+        ) + task.calc_size / self.nodes[node_id].power
         optimal_performer = node_id
         route_to_performer = [node_id]
         route_bandwidth = float('inf')
@@ -373,14 +378,18 @@ class Net:
             if route_cost < 0:
                 continue
             overall_cost = (task.transfer_weight + task.transfer_weight_return)/route_cost + \
-                self.nodes[p_id].get_loading() + task.calc_size / self.nodes[p_id].power
-            if self.debug_info: print('OVERALL_COST: ', overall_cost, 'NODE ID: ', p_id)
+                self.nodes[p_id].get_loading() + task.calc_size / \
+                self.nodes[p_id].power
+            if self.debug_info:
+                print('OVERALL_COST: ', overall_cost, 'NODE ID: ', p_id)
             if overall_cost < min_cost:
                 min_cost = overall_cost
                 optimal_performer = p_id
                 route_to_performer = route
                 route_bandwidth = route_cost
-        if self.debug_info: print(f"OPTIMAL PERFORMER {optimal_performer}, OPTIMAL ROUTE {route_to_performer}")
+        if self.debug_info:
+            print(
+                f"OPTIMAL PERFORMER {optimal_performer}, OPTIMAL ROUTE {route_to_performer}")
         return optimal_performer, route_to_performer, min_cost, route_bandwidth
 
     def elementaty_scheduler(self,
@@ -395,35 +404,35 @@ class Net:
             output:
                 'node_id' (int) - an id of the task performer
         '''
-        return node_id, [node_id], self.nodes[node_id].get_loading(), float('inf')
+        return node_id, [node_id], self.nodes[node_id].get_loading() + task.calc_size / self.nodes[node_id].power, float('inf')
 
-    def shortest_path(self,from_, to_):
+    def shortest_path(self, from_, to_):
         self.update_components()
-        D=nx.DiGraph()
+        D = nx.DiGraph()
         for i in self.G.nodes:
             for j in self.G.nodes:
-                if (i,j) in self.G.edges and not (self.nodes[i].isTransfering or self.nodes[j].isTransfering):
-                    D.add_edge(i,j,weight=self.G.edges[i,j]['weight'])
-                    D.add_edge(j,i,weight=self.G.edges[i,j]['weight'])
-                    
+                if (i, j) in self.G.edges and not (self.nodes[i].isTransfering or self.nodes[j].isTransfering):
+                    D.add_edge(i, j, weight=self.G.edges[i, j]['weight'])
+                    D.add_edge(j, i, weight=self.G.edges[i, j]['weight'])
+
         for i in nx.weakly_connected_components(D):
             if from_ and to_ in i:
-                cost=dict.fromkeys(D.nodes,-1)
-                cost[from_]=float("Inf")
-                vertexes=dict.fromkeys(D.nodes)
-                for i in range(D.number_of_nodes()- 1): 
-                    for u, v, w in D.edges(data=True): 
-                        if cost[u] != -1 and min(w['weight'],cost[u]) > cost[v]:
-                            cost[v] = min(w['weight'],cost[u])
-                            vertexes[v]=u
-                route=[[to_]]
-                r=to_
+                cost = dict.fromkeys(D.nodes, -1)
+                cost[from_] = float("Inf")
+                vertexes = dict.fromkeys(D.nodes)
+                for i in range(D.number_of_nodes() - 1):
+                    for u, v, w in D.edges(data=True):
+                        if cost[u] != -1 and min(w['weight'], cost[u]) > cost[v]:
+                            cost[v] = min(w['weight'], cost[u])
+                            vertexes[v] = u
+                route = [[to_]]
+                r = to_
                 while r != from_:
-                    r=vertexes[r]
-                    route[0].insert(0,r)
+                    r = vertexes[r]
+                    route[0].insert(0, r)
                 route.append(cost[to_])
                 return route
-            
+
         return [[from_], -1]
 
 
@@ -459,7 +468,6 @@ class Simulation:
     def visualization(self,):
         # не мы
         pass
-    
 
     def create_nodes(self, scenario_nodes):
         """
@@ -495,31 +503,40 @@ class Simulation:
 
             # задаём уравнение движения для узла
             if way_eq == "static":
-                way_equation = lambda x, y, d, t: (x0, y0)
+                def way_equation(x, y, d, t): return (x0, y0)
                 # way_equation = lambda t: (x0, y0)
             elif way_eq == "circle":
                 w = scenario_nodes[node_id]['w']
-                direction = scenario_nodes[node_id]['direction'] # её надо хранить в ноде
+                # её надо хранить в ноде
+                direction = scenario_nodes[node_id]['direction']
                 xc, yc = scenario_nodes[node_id]['xc'], scenario_nodes[node_id]['yc']
-                way_equation = lambda x0, y0, d, t: eq_circle(x0, y0, xc, yc, w, d, t)
+
+                def way_equation(x0, y0, d, t): return eq_circle(
+                    x0, y0, xc, yc, w, d, t)
             elif way_eq == "partline":
                 x_s, y_s = scenario_nodes[node_id]['x_start'], scenario_nodes[node_id]['y_start']
                 x_e, y_e = scenario_nodes[node_id]['x_end'], scenario_nodes[node_id]['y_end']
                 w, direction = scenario_nodes[node_id]['w'], 1
-                way_equation = lambda x0, y0, d, t: eq_partline(x0, y0, x_s, y_s, x_e, y_e, w, t, d)
+
+                def way_equation(x0, y0, d, t): return eq_partline(
+                    x0, y0, x_s, y_s, x_e, y_e, w, t, d)
             elif way_eq == "sin_or_cos":
                 x_s, x_e = scenario_nodes[node_id]['x_start'], scenario_nodes[node_id]['x_end']
                 w = scenario_nodes[node_id]['w']
                 its_sin = scenario_nodes[node_id]['sin']
-                way_equation = lambda x0, y, d, t: eq_sin_or_cos(x0, y0, x_s, x_e, w, t, d, sin=its_sin)
+
+                def way_equation(x0, y, d, t): return eq_sin_or_cos(
+                    x0, y0, x_s, x_e, w, t, d, sin=its_sin)
             elif way_eq == "brownian":
                 n = 1
                 w = scenario_nodes[node_id]['w']
                 x_s, y_s = scenario_nodes[node_id]['x_start'], scenario_nodes[node_id]['y_start']
                 x_e, y_e = scenario_nodes[node_id]['x_end'], scenario_nodes[node_id]['y_end']
-                way_equation = lambda x0, y0, d, t: constraints_to_brownian(brownian(x0, y0, n, t, w, out=None), x_s, y_s, x_e, y_e)
+                def way_equation(x0, y0, d, t): return constraints_to_brownian(
+                    brownian(x0, y0, n, t, w, out=None), x_s, y_s, x_e, y_e)
             else:
-                print(f"Для узла {node_id} задано не реализованное уравнение движения - {way_eq}.")
+                print(
+                    f"Для узла {node_id} задано не реализованное уравнение движения - {way_eq}.")
                 raise ValueError
 
             # задаём узел
@@ -552,12 +569,20 @@ def generate_tasks(list_node_ids: list[str]) -> list[tuple]:
     output = []
     prev_time = 0.0
     for i in list_node_ids:
-        count_tasks_node_i = int(np.random.exponential(scale=2.0, size=1)) # количество задач на узел по экспоненциальному распределению
+        # количество задач на узел по экспоненциальному распределению
+        count_tasks_node_i = int(np.random.exponential(scale=2.0, size=1))
         for j in range(count_tasks_node_i):
-            calc_size = int(np.abs(np.random.normal(loc=150.0, scale=100, size=1))) # распределение вычислительной сложности задачи?
-            transfer_weight = int(np.abs(np.random.normal(loc=150.0, scale=100, size=1))) # распределение размера задачи?
-            transfer_weight_return = int(np.abs(np.random.normal(loc=150.0, scale=100, size=1))) # распределение размера ответа
-            time_to_create = prev_time + float(np.random.exponential(scale = 100.0, size=1)) # задаём время, когда должна появится задача по экспоненциальному распределению
+            # распределение вычислительной сложности задачи?
+            calc_size = int(
+                np.abs(np.random.normal(loc=150.0, scale=100, size=1)))
+            # распределение размера задачи?
+            transfer_weight = int(
+                np.abs(np.random.normal(loc=150.0, scale=100, size=1)))
+            transfer_weight_return = int(np.abs(np.random.normal(
+                loc=150.0, scale=100, size=1)))  # распределение размера ответа
+            # задаём время, когда должна появится задача по экспоненциальному распределению
+            time_to_create = prev_time + \
+                float(np.random.exponential(scale=100.0, size=1))
             task_j = Task(calc_size, transfer_weight, transfer_weight_return)
             output.append((i, time_to_create, task_j))
             prev_time = time_to_create
@@ -624,20 +649,17 @@ if __name__ == "__main__":
 
         # задаём узел
         nodes[node_id] = Node(scenario['nodes'][node_id]['x'], scenario['nodes'][node_id]
-                            ['y'], scenario['nodes'][node_id]['power'], way_equation, direction)
+                              ['y'], scenario['nodes'][node_id]['power'], way_equation, direction)
 
     # генерируем сценарии
     node_ids = list(scenario['nodes'].keys())
     tasks = generate_tasks(node_ids)
     # print(tasks)
 
-
     def bandwidth_formula(max_distance): return lambda x: 1/x
-
 
     # задаём сеть
     net = Net(bandwidth_formula, nodes)
-
 
     # 1. Сценарии. Разобрать с генератором задач
     # 2. Переменная хранения состояния сети, интерфейс для использования в Simulator (описан в init класса Net)
