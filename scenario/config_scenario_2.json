@@ -36,7 +36,7 @@
             "y": -1,
             "xc": 0,
             "yc": 0,
-            "power": 10,
+            "power": 100,
             "w": 10,
             "way_eq": "circle",
             "direction": 1

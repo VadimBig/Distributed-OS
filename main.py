@@ -43,7 +43,7 @@ def generate_tasks(list_node_ids: list[str]) -> list[tuple]:
 
 if __name__ == "__main__":
     # загружаем json с описанием сценария
-    number_scenario = 1
+    number_scenario = 2
     np.random.seed(0)
     file = open(fr'.\scenario\config_scenario_{number_scenario}.json')
     scenario = json.load(file)
@@ -123,7 +123,7 @@ if __name__ == "__main__":
     # net.update(104,0.1)
     # print(net.nodes)
     sim = Simulation(tasks=tasks, net=net, step=10,logger=logger)
-    sim.run(20000)
+    sim.run(200000)
 
     # 1. Сценарии. Разобрать с генератором задач
     # 2. Переменная хранения состояния сети, интерфейс для использования в Simulator (описан в init класса Net)

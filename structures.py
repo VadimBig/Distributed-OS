@@ -259,7 +259,9 @@ class Net:
 
     def __stop_transfering(self,
                            transfer,
-                           finished
+                           finished,
+                           timestep,
+                           is_result=False
                            ):
         # stop transfering,
         # (if transfering was successfull)
@@ -271,7 +273,7 @@ class Net:
                 self.nodes[node_id].end_transfer()
         if finished:
             if is_result:
-                self.__finish_task(route[0], task)
+                self.__finish_task(route[0], task,timestep=timestep)
             else:
                 self.add_task(route[-1], task)
 
@@ -317,7 +319,7 @@ class Net:
                         # exit from outer loop
                         break
         transfers_to_continue = [
-            transfer for transfer in self.transfers if transfer not in transfers_to_stop and transfer not in transfers_to_finish]
+            transfer for transfer in self.transfers if transfer not in transfers_to_stop and transfer not in transfers_to_finish and transfer not in transfers_calc_results_to_finish]
 
         # debug
         if self.debug_info:
@@ -327,11 +329,11 @@ class Net:
 
         self.transfers = transfers_to_continue
         for transfer in transfers_to_stop:
-            self.__stop_transfering(transfer, finished=False)
+            self.__stop_transfering(transfer, finished=False,timestep=timestep)
         for transfer in transfers_to_finish:
-            self.__stop_transfering(transfer, finished=True)
+            self.__stop_transfering(transfer, finished=True,timestep=timestep)
         for transfer in transfers_calc_results_to_finish:
-            self.__stop_transfering(transfer, finished=True, is_result=True)
+            self.__stop_transfering(transfer, finished=True, is_result=True,timestep=timestep)
 
         # START TRANSFER RESULTS OF COMPUTATIONS
         not_sended = []
@@ -343,7 +345,7 @@ class Net:
                     not_sended.append((performer_id, finished_task))
                 else:
                     self.__start_transfering(
-                        finished_task, cost, route, timestep, is_results=True)
+                        finished_task, cost, route, timestep, is_result=True)
             else:
                 self.__finish_task(performer_id, finished_task, timestep)
         self.to_be_sent_back = not_sended
