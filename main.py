@@ -3,8 +3,7 @@ import networkx as nx
 import numpy as np
 from collections import deque
 from typing import Callable, Iterable
-from brownian import brownian, constraints_to_brownian
-from trajectory_equations import eq_circle, eq_partline, eq_sin_or_cos
+from trajectory_equations import eq_circle, eq_partline, eq_sin_or_cos, brownian, constraints_to_brownian
 import json
 
 
@@ -25,11 +24,14 @@ class Node:
     """
 
     def __init__(self,
+                 x0,
+                 y0,
                  power: float,  # computing power
                  # f : (time:float) -> (x:float, y:float)
                  way_equation: Callable,
                  ):
-        self.x, self.y = way_equation(0)
+        self.direction = 1
+        self.x, self.y = x0, y0
         self.power = power
         self.isActive = True  # True if the node is capable of interacting with others
         self.isCalculating = False  # True if the node is computing some task
@@ -38,9 +40,6 @@ class Node:
         self.tasks = deque()  # queue of tasks for node to compute
         self.given_tasks = deque()  # queue for tasks which are given to another customer
         self.current_progress = 0
-
-        # self.w = 0
-        # self.direction = direction
 
     def __update_state(self, ):
         self.isCalculating = bool(self.tasks)
@@ -91,6 +90,20 @@ class Node:
         '''
         return sum([t.calc_size for t in self.tasks]) - self.current_progress
 
+    def get_est_start_executions(self,):
+        '''
+            Returns list of tasks and its estimated start of execution (ESOE)
+            If task is in process of computation, then ESOE equals its negative current progress.
+        '''
+        eet = []
+        loading = self.get_loading()
+        tasks_rev = self.tasks.copy()
+        tasks_rev.reverse()
+        for task in tasks_rev:
+            loading -= task.calc_size
+            eet.append((task, loading))
+        return eet
+
     def wake(self, ):
         assert self.isActive == False, "This node isn't sleeping."
         self.isActive = True
@@ -108,9 +121,8 @@ class Node:
         self.isTransfering = False
 
     def move(self, t):
-        x, y = self.way_equation(t)
-        self.x = x
-        self.y = y
+        self.x, self.y, self.direction = self.way_equation(
+            self.x, self.y, self.direction, t)
 
     def __str__(self) -> str:
         d = {'x': self.x,
@@ -201,8 +213,9 @@ class Net:
         end_time = timestep + \
             self.__calc_transfer_time(task, bandwidth, is_result=is_result)
         self.transfers.append((task, route, end_time, is_result))
-        for node_id in route:
-            self.nodes[node_id].start_transfer()
+        if len(route) > 1:
+            for node_id in route:
+                self.nodes[node_id].start_transfer()
 
     def __stop_transfering(self,
                            transfer,
@@ -213,8 +226,9 @@ class Net:
         # If a task was tranfered, we call `add_task` to assign this task to a new performer
         # If a computation results were transfered, we call `SOME_FUNCTION` to finish task lifetime
         task, route, end_time, is_result = transfer
-        for node_id in route:
-            self.nodes[node_id].end_transfer()
+        if len(route) > 1:
+            for node_id in route:
+                self.nodes[node_id].end_transfer()
         if finished:
             if is_result:
                 self.__finish_task(route[0], task)
@@ -234,10 +248,9 @@ class Net:
         self.nodes[customer_id].del_task(task, from_given=True)
         # logger.log()
 
-
     def update(self, timestep, timedelta):
         # update general state of net
-        self.move(timestep)
+        self.move(timedelta)
         self.update_components()
         # transferings update
         transfers_to_continue = []
@@ -293,11 +306,6 @@ class Net:
         self.to_be_sent_back = not_sended
 
         for node_id in self.nodes.keys():
-            if self.destinations[node_id]:
-                is_connected = self.check_connection(
-                    node_id, self.destinations[node_id])
-                if not is_connected:
-                    self.destinations[node_id] = 0
 
             # забываем о тех задачах, которые были выданы узлами, покинувшими компоненту связности узла
             lost_connections = set()
@@ -317,9 +325,39 @@ class Net:
         # 2) проверить что вычисления все еще имеют смысл (тот для кого мы вычисляем все еще в сети). Иначе - обработать ситуацию (РЕАЛИЗОВАНО)
         # 3) если первые два условия не выполняются, то можно написать алгоритмы опитмизации,
         #    чтобы по возращению устрйоств в сеть они продоолжали выполнять прерванное (НЕ РЕАЛИЗОВАНО)
+    def schedule_all(self,
+                     timestep,
+                     mode='basic',
+                     ):
+        if mode == 'basic':
+            scheduler = self.basic_scheduler
+        elif mode == 'elementary':
+            scheduler = self.elementaty_scheduler
+        else:
+            print(
+                "Wrong value encountered in `mode` argument. Possible options are: basic, elementary")
+            raise ValueError
+
+        if self.debug_info:
+            print('------------ SCHEDULING STARTED ------------')
+        for node_id in self.nodes.keys():
+            eses = self.nodes[node_id].get_est_start_executions()
+            for task, est_start_time in eses:
+                min_cost = task.calc_size / \
+                    self.nodes[node_id].power + est_start_time
+                opt_performer, route, _, route_bandwidth = scheduler(
+                    node_id, task, min_cost=min_cost)
+                if opt_performer != node_id:
+                    self.nodes[node_id].del_task(task)
+                    self.__start_transfering(
+                        task, route_bandwidth, route, timestep)
+                    if self.debug_info:
+                        print('TASK TRANSFERING STARTED:', task, route)
+        if self.debug_info:
+            print('------------ SCHEDULING FINISHED ------------')
 
     def schedule(self,
-                 timestamp,  # current time (in the simulation)
+                 timestep,  # current time (in the simulation) # TIMESTEP
                  to_schedule,  # list of tuples (node_id, Task)
                  mode='basic',  # possible values: basic, elementary
                  ):
@@ -340,7 +378,7 @@ class Net:
         for node_id, task in to_schedule:
             opt_performer, route, _, route_bandwidth = scheduler(
                 node_id=node_id, task=task)
-            self.__start_transfering(task, route_bandwidth, route, timestamp)
+            self.__start_transfering(task, route_bandwidth, route, timestep)
             if self.debug_info:
                 print('TASK TRANSFERING STARTED:', task, route)
         if self.debug_info:
@@ -348,7 +386,8 @@ class Net:
 
     def basic_scheduler(self,
                         node_id,
-                        task: Task):
+                        task: Task,
+                        min_cost=None):
         '''
             A basic scheduler which assigns tasks to nodes according to the following algorithm
 
@@ -368,8 +407,9 @@ class Net:
                 'node_id' (int) - an id of the task performer
         '''
         all_reachable_nodes = list(nx.shortest_path(self.G, node_id).keys())
-        min_cost = self.nodes[node_id].get_loading(
-        ) + task.calc_size / self.nodes[node_id].power
+        if min_cost is None:
+            min_cost = self.nodes[node_id].get_loading(
+            ) + task.calc_size / self.nodes[node_id].power
         optimal_performer = node_id
         route_to_performer = [node_id]
         route_bandwidth = float('inf')
@@ -394,7 +434,8 @@ class Net:
 
     def elementaty_scheduler(self,
                              node_id,
-                             task: Task
+                             task: Task,
+                             min_cost=None
                              ):
         '''
             A simplest scheduler which assigns every node its task
@@ -404,7 +445,10 @@ class Net:
             output:
                 'node_id' (int) - an id of the task performer
         '''
-        return node_id, [node_id], self.nodes[node_id].get_loading() + task.calc_size / self.nodes[node_id].power, float('inf')
+        if min_cost is None:
+            min_cost = self.nodes[node_id].get_loading(
+            ) + task.calc_size / self.nodes[node_id].power
+        return node_id, [node_id], min_cost, float('inf')
 
     def shortest_path(self, from_, to_):
         self.update_components()
@@ -416,7 +460,7 @@ class Net:
                     D.add_edge(j, i, weight=self.G.edges[i, j]['weight'])
 
         for i in nx.weakly_connected_components(D):
-            if from_ and to_ in i:
+            if (from_ in i) and (to_ in i):
                 cost = dict.fromkeys(D.nodes, -1)
                 cost[from_] = float("Inf")
                 vertexes = dict.fromkeys(D.nodes)
@@ -456,12 +500,15 @@ class Scenario:
 
 
 class Simulation:
-    def __init__(self, steps: int, net: Net, scenario: Scenario, schedule_interval: int):
-
+    def __init__(self, step: float, net: Net, tasks):
+        # TASKS - LIST OF TUPLES: (CUSTOMER_ID, TIME_TO_CREATE, TASK)
         # сколько шагов проссимулировать. 1 шаг == 20мс (автоматически дает нам в среднем залержку в 10мс) (180.000 == 1 час)
-        self.steps = steps
+        self.step = step  # шаг симуляции
         self.net = net
-        self.schedule_interval = schedule_interval  # как часто делаем скедулинг в ms
+        self.tasks = deque(tasks)
+        self.ALL_TASKS = deque(tasks)
+        self.time = 0
+        # self.schedule_interval = schedule_interval  # как часто делаем скедулинг в ms
 
     # перемещения узлом и многое другое можно визуализировать через анимации. То есть в процессе строить анимацию, а в конце записать ее в файл .gif
 
@@ -469,84 +516,37 @@ class Simulation:
         # не мы
         pass
 
-    def create_nodes(self, scenario_nodes):
-        """
-        Принимает на вход `nodes` - словарь, содержащий информацию об узлах, вида:
-        ```
-        "nodes": {
-            "1": {
-                "x": -2,
-                "y": -2,
-                "x_start": -4,
-                "y_start": -4,
-                "x_end": 4,
-                "y_end": 4,
-                "power": 10,
-                "w": 10,
-                "way_eq": "brownian",
-                "direction": 1
-        },
-        ```
-        На выходе словарь вида:
-        ```
-        {
-            node_id: Node
-        }
-        ```
-        """
-        nodes = dict()
-        # Создаём словарь узлов {node_id: Node}
-        for node_id in scenario_nodes:
-            x0, y0 = scenario_nodes[node_id]['x'], scenario_nodes[node_id]['y']
-            power = scenario_nodes[node_id]['power']
-            way_eq = scenario_nodes[node_id]['way_eq']
+    def run(self, sim_time):
+        '''
+            Start simualtion.
+            sim_time -- time of a simulation in ms
+        '''
+        import pprint
+        pp = pprint.PrettyPrinter(indent=4)
+        while self.time <= sim_time:
+            print(self.net.G.edges)
+            pp.pprint(self.net.nodes)
+            self.time += self.step
+            self.net.update(self.time, self.step)
+            curr_tasks = self.__current_tasks()
+            print("CURRENT TASKS", curr_tasks)
+            self.net.schedule(timestep=self.time, to_schedule=curr_tasks)
+            self.net.schedule_all(timestep=self.time, mode='basic')
 
-            # задаём уравнение движения для узла
-            if way_eq == "static":
-                def way_equation(x, y, d, t): return (x0, y0)
-                # way_equation = lambda t: (x0, y0)
-            elif way_eq == "circle":
-                w = scenario_nodes[node_id]['w']
-                # её надо хранить в ноде
-                direction = scenario_nodes[node_id]['direction']
-                xc, yc = scenario_nodes[node_id]['xc'], scenario_nodes[node_id]['yc']
+    def reset(self,):
+        '''
+            Resets simulation
+        '''
+        self.time = 0
+        # self.net.restart()
+        self.tasks = self.ALL_TASKS
 
-                def way_equation(x0, y0, d, t): return eq_circle(
-                    x0, y0, xc, yc, w, d, t)
-            elif way_eq == "partline":
-                x_s, y_s = scenario_nodes[node_id]['x_start'], scenario_nodes[node_id]['y_start']
-                x_e, y_e = scenario_nodes[node_id]['x_end'], scenario_nodes[node_id]['y_end']
-                w, direction = scenario_nodes[node_id]['w'], 1
-
-                def way_equation(x0, y0, d, t): return eq_partline(
-                    x0, y0, x_s, y_s, x_e, y_e, w, t, d)
-            elif way_eq == "sin_or_cos":
-                x_s, x_e = scenario_nodes[node_id]['x_start'], scenario_nodes[node_id]['x_end']
-                w = scenario_nodes[node_id]['w']
-                its_sin = scenario_nodes[node_id]['sin']
-
-                def way_equation(x0, y, d, t): return eq_sin_or_cos(
-                    x0, y0, x_s, x_e, w, t, d, sin=its_sin)
-            elif way_eq == "brownian":
-                n = 1
-                w = scenario_nodes[node_id]['w']
-                x_s, y_s = scenario_nodes[node_id]['x_start'], scenario_nodes[node_id]['y_start']
-                x_e, y_e = scenario_nodes[node_id]['x_end'], scenario_nodes[node_id]['y_end']
-                def way_equation(x0, y0, d, t): return constraints_to_brownian(
-                    brownian(x0, y0, n, t, w, out=None), x_s, y_s, x_e, y_e)
-            else:
-                print(
-                    f"Для узла {node_id} задано не реализованное уравнение движения - {way_eq}.")
-                raise ValueError
-
-            # задаём узел
-            nodes[node_id] = Node(x0, y0, power, way_equation, direction)
-
-    def run(self,):
-        for timestep in range(self.steps):
-            self.net.update(timestep)
-            if timestep % self.schedule_interval == 0:
-                self.net.schedule()
+    def __current_tasks(self,):
+        current_tasks = []
+        while self.tasks and self.tasks[0][1] <= self.time:
+            current_tasks.append((self.tasks[0][0], self.tasks[0][2]))
+            self.tasks.popleft()
+        return current_tasks
 
 
 def generate_tasks(list_node_ids: list[str]) -> list[tuple]:
@@ -583,7 +583,8 @@ def generate_tasks(list_node_ids: list[str]) -> list[tuple]:
             # задаём время, когда должна появится задача по экспоненциальному распределению
             time_to_create = prev_time + \
                 float(np.random.exponential(scale=100.0, size=1))
-            task_j = Task(calc_size, transfer_weight, transfer_weight_return)
+            task_j = Task(calc_size, transfer_weight,
+                          transfer_weight_return, int(i))
             output.append((i, time_to_create, task_j))
             prev_time = time_to_create
     return sorted(output, key=lambda x: x[1])
@@ -592,7 +593,7 @@ def generate_tasks(list_node_ids: list[str]) -> list[tuple]:
 if __name__ == "__main__":
     # загружаем json с описанием сценария
     number_scenario = 1
-
+    np.random.seed(0)
     file = open(fr'.\scenario\config_scenario_{number_scenario}.json')
     scenario = json.load(file)
 
@@ -605,13 +606,14 @@ if __name__ == "__main__":
 
     # Создаём словарь узлов {node_id: Node}
     for node_id in scenario['nodes']:
+
         x0, y0 = scenario['nodes'][node_id]['x'], scenario['nodes'][node_id]['y']
         power = scenario['nodes'][node_id]['power']
         way_eq = scenario['nodes'][node_id]['way_eq']
 
         # задаём уравнение движения для узла
         if way_eq == "static":
-            def way_equation(x, y, d, t): return (x0, y0)
+            def way_equation(x0, y0, d, t): return (x0, y0, d)
             # way_equation = lambda t: (x0, y0)
         elif way_eq == "circle":
             w = scenario['nodes'][node_id]['w']
@@ -633,33 +635,44 @@ if __name__ == "__main__":
             w = scenario['nodes'][node_id]['w']
             its_sin = scenario['nodes'][node_id]['sin']
 
-            def way_equation(x0, y, d, t): return eq_sin_or_cos(
+            def way_equation(x0, y0, d, t): return eq_sin_or_cos(
                 x0, y0, x_s, x_e, w, t, d, sin=its_sin)
         elif way_eq == "brownian":
             n = 1
             w = scenario['nodes'][node_id]['w']
             x_s, y_s = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['y_start']
             x_e, y_e = scenario['nodes'][node_id]['x_end'], scenario['nodes'][node_id]['y_end']
+
             def way_equation(x0, y0, d, t): return constraints_to_brownian(
-                brownian(x0, y0, n, t, w, out=None), x_s, y_s, x_e, y_e)
+                brownian(x0, y0, n, t, w), x_s, y_s, x_e, y_e)
         else:
             print(
                 f"Для узла {node_id} задано не реализованное уравнение движения - {way_eq}.")
             raise ValueError
-
         # задаём узел
-        nodes[node_id] = Node(scenario['nodes'][node_id]['x'], scenario['nodes'][node_id]
-                              ['y'], scenario['nodes'][node_id]['power'], way_equation, direction)
+        nodes[int(node_id)] = Node(scenario['nodes'][node_id]['x'], scenario['nodes']
+                                   [node_id]['y'], scenario['nodes'][node_id]['power'], way_equation)
 
     # генерируем сценарии
-    node_ids = list(scenario['nodes'].keys())
+    node_ids = [int(a) for a in list(scenario['nodes'].keys())]
     tasks = generate_tasks(node_ids)
     # print(tasks)
 
-    def bandwidth_formula(max_distance): return lambda x: 1/x
+    def bandwidth_formula(max_dist, max_bandwidth): return (
+        lambda d: max_bandwidth - d*(max_bandwidth/max_dist))
 
     # задаём сеть
     net = Net(bandwidth_formula, nodes)
+    # customer, time, task = tasks[0]
+    # net.update(0,0)
+    # print(task)
+    # print(net.G.edges)
+    # net.schedule(time,to_schedule=[(task.customer_id, task)])
+    # net.update(103.9,103.9)
+    # net.update(104,0.1)
+    # print(net.nodes)
+    sim = Simulation(tasks=tasks, net=net, step=10)
+    sim.run(200)
 
     # 1. Сценарии. Разобрать с генератором задач
     # 2. Переменная хранения состояния сети, интерфейс для использования в Simulator (описан в init класса Net)
