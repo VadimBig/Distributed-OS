@@ -7,6 +7,7 @@ import json
 import matplotlib.pyplot as plt
 import math
 from PIL import Image
+from datetime import datetime
 
 @dataclass(frozen=True)  # (можно просто tuple или как удобнее)
 class Task:
@@ -157,23 +158,7 @@ class Net:
     def shortest_path(from_, to_):
         pass  # SVYAT
 
-    def Visualization_Graph(self):
-        for i in range(18000):
-            i += 1
-            path = 0
-            pos = nx.spring_layout(self.G)
-            for i in self.G.nodes:
-                if i.isTransfering == True:
-                    path = i.Route
-            ##path = nx.shortest_path(self.G, source=Node.source, target=Node.destination)
-            path_edges = list(zip(path, path[1:]))
-            nx.draw_networkx_nodes(self.G, pos, nodelist=set(self.G.nodes) - set(path))
-            nx.draw_networkx_edges(self.G, pos, edgelist=set(self.G.edges) - set(path_edges),
-                                connectionstyle='arc3, rad = 0.3')
-            nx.draw_networkx_nodes(self.G, pos, nodelist=path, node_color='r')
-            nx.draw_networkx_edges(self.G, pos, edgelist=path_edges, edge_color='r', connectionstyle='arc3, rad = 0.3')
-            nx.draw_networkx_labels(self.G, pos)
-            plt.savefig(f'images/fig--{i}.png')
+    
 
 
 
@@ -206,7 +191,7 @@ class Simulation:
 
     # перемещения узлом и многое другое можно визуализировать через анимации. То есть в процессе строить анимацию, а в конце записать ее в файл .gif
 
-    def visualization(self,):
+    def visualization_gif(self,):
         frames = []
         duration1 = [0]
         Start = True
@@ -229,7 +214,45 @@ class Simulation:
             loop=0
         )
 
+    def visualization(self,):
+        task_nodes=[]
+        routes_edges=[]
+        for task in self.net.transfers:
+            route=task[1]
+            customer=route[0]
+            performer=route[-1]
+            task_nodes.append(customer,performer)
+            for i in range(len(route)-1):
+                routes_edges.append([route[i],route[i+1]])
+        
+        for u,v in self.net.G.edges():
+                    Xu,Yu=self.net.nodes[u].x,self.net.nodes[u].y
+                    Xv,Yv=self.net.nodes[v].x,self.net.nodes[v].y
+                    if [u,v] in routes_edges :
+                        plt.plot([Xu,Xv],Yu,Yv,'g',linewidth=2)
+                        plt.arrow(Xu,Yu,(Xv-Xu)/2,(Yv-Yu)/2,length_includes_head=True,head_length = 0.5,head_width = 0.3,color='g')
+                    elif [v,u] in routes_edges:
+                        plt.plot([Xu,Xv],Yu,Yv,'g',linewidth=2)
+                        plt.arrow(Xv,Yv,(Xu-Xv)/2,(Yu-Yv)/2,length_includes_head=True,head_length = 0.5,head_width = 0.3,color='g')
+                    else:
+                        plt.plot([Xu,Xv],[Yu,Yv],'b',linewidth=1)
 
+        for node_id in self.net.nodes.keys():
+                    x,y = self.net.nodes[node_id].x, self.net.nodes[node_id].y
+                    #plt.annotate(f"{node_id}",(x,y-1))
+                    if node_id in task_nodes:
+                        plt.plot(x,y,'ro',markersize=12)
+                    elif self.net.nodes[node_id].isCalculating:
+                        plt.plot(x,y,'rp',markersize=12)
+                    else:
+                        plt.plot(x,y,'bo',markersize=12)
+                    plt.text(x,y,f"{node_id}",horizontalalignment='center', 
+                        verticalalignment='center',fontweight='bold',size=7,color='black')
+        
+        cur_dt = datetime.now()
+        plt.savefig(f'image_{cur_dt.month}-{cur_dt.day}-{cur_dt.hour}-{cur_dt.minute}-{cur_dt.second}.png',dpi=200)
+        
+        
     def create_nodes(self, scenario_nodes):
         """
         Принимает на вход `nodes` - словарь, содержащий информацию об узлах, вида:
