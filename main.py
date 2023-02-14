@@ -221,36 +221,36 @@ class Simulation:
             route=task[1]
             customer=route[0]
             performer=route[-1]
-            task_nodes.append(customer,performer)
+            task_nodes.extend([customer,performer])
             for i in range(len(route)-1):
                 routes_edges.append([route[i],route[i+1]])
         
         for u,v in self.net.G.edges():
-                    Xu,Yu=self.net.nodes[u].x,self.net.nodes[u].y
-                    Xv,Yv=self.net.nodes[v].x,self.net.nodes[v].y
-                    if [u,v] in routes_edges :
-                        plt.plot([Xu,Xv],Yu,Yv,'g',linewidth=2)
-                        plt.arrow(Xu,Yu,(Xv-Xu)/2,(Yv-Yu)/2,length_includes_head=True,head_length = 0.5,head_width = 0.3,color='g')
-                    elif [v,u] in routes_edges:
-                        plt.plot([Xu,Xv],Yu,Yv,'g',linewidth=2)
-                        plt.arrow(Xv,Yv,(Xu-Xv)/2,(Yu-Yv)/2,length_includes_head=True,head_length = 0.5,head_width = 0.3,color='g')
-                    else:
-                        plt.plot([Xu,Xv],[Yu,Yv],'b',linewidth=1)
+            Xu,Yu=self.net.nodes[u].x,self.net.nodes[u].y
+            Xv,Yv=self.net.nodes[v].x,self.net.nodes[v].y
+            if [u,v] in routes_edges :
+                plt.plot([Xu,Xv],[Yu,Yv],'g',linewidth=2)
+                plt.arrow(Xu,Yu,(Xv-Xu)/2,(Yv-Yu)/2,length_includes_head=True,head_length = 0.5,head_width = 0.3,color='g')
+            elif [v,u] in routes_edges:
+                plt.plot([Xu,Xv],[Yu,Yv],'g',linewidth=2)
+                plt.arrow(Xv,Yv,(Xu-Xv)/2,(Yu-Yv)/2,length_includes_head=True,head_length = 0.5,head_width = 0.3,color='g')
+            else:
+                plt.plot([Xu,Xv],[Yu,Yv],'b',linewidth=1)
+                    
 
         for node_id in self.net.nodes.keys():
-                    x,y = self.net.nodes[node_id].x, self.net.nodes[node_id].y
-                    #plt.annotate(f"{node_id}",(x,y-1))
-                    if node_id in task_nodes:
-                        plt.plot(x,y,'ro',markersize=12)
-                    elif self.net.nodes[node_id].isCalculating:
-                        plt.plot(x,y,'rp',markersize=12)
-                    else:
-                        plt.plot(x,y,'bo',markersize=12)
-                    plt.text(x,y,f"{node_id}",horizontalalignment='center', 
-                        verticalalignment='center',fontweight='bold',size=7,color='black')
+            x,y = self.net.nodes[node_id].x, self.net.nodes[node_id].y
+            if node_id in task_nodes:
+                plt.plot(x,y,'ro',markersize=12)
+            elif self.net.nodes[node_id].isCalculating:
+                plt.plot(x,y,'rp',markersize=12)
+            else:
+                plt.plot(x,y,'bo',markersize=12)
+                plt.text(x,y,f"{node_id}",horizontalalignment='center', 
+                    verticalalignment='center',fontweight='bold',size=7,color='black')
         
         cur_dt = datetime.now()
-        plt.savefig(f'image_{cur_dt.month}-{cur_dt.day}-{cur_dt.hour}-{cur_dt.minute}-{cur_dt.second}.png',dpi=200)
+        plt.savefig(f'image_{cur_dt.month}-{cur_dt.day}-{cur_dt.hour}-{cur_dt.minute}-{cur_dt.second}-{cur_dt.microsecond}.png',dpi=200)
         
         
     def create_nodes(self, scenario_nodes):
