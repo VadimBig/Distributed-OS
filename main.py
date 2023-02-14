@@ -246,8 +246,8 @@ class Simulation:
                 plt.plot(x,y,'rp',markersize=12)
             else:
                 plt.plot(x,y,'bo',markersize=12)
-                plt.text(x,y,f"{node_id}",horizontalalignment='center', 
-                    verticalalignment='center',fontweight='bold',size=7,color='black')
+            plt.text(x,y,f"{node_id}",horizontalalignment='center', 
+               verticalalignment='center',fontweight='bold',size=7,color='black')
         
         cur_dt = datetime.now()
         plt.savefig(f'image_{cur_dt.month}-{cur_dt.day}-{cur_dt.hour}-{cur_dt.minute}-{cur_dt.second}-{cur_dt.microsecond}.png',dpi=200)
