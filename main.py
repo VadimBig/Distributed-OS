@@ -189,30 +189,7 @@ class Simulation:
         self.net = net
         self.schedule_interval = schedule_interval  # как часто делаем скедулинг в ms
 
-    # перемещения узлом и многое другое можно визуализировать через анимации. То есть в процессе строить анимацию, а в конце записать ее в файл .gif
-
-    def visualization_gif(self,):
-        frames = []
-        duration1 = [0]
-        Start = True
-        while True:
-            time = + 10
-            duration1.append(time)
-            if time == 18000:
-                break
-
-        for i in range(1800):
-            frame = Image.open(f'images/fig--{i}.png')
-            frames.append(frame)
-
-        frames[0].save(
-            'Graph.gif',
-            save_all=True,
-            append_images=frames[1:],  # Срез который игнорирует первый кадр.
-            optimize=True,
-            duration=duration1,
-            loop=0
-        )
+    # перемещения узлом и многое другое можно визуализировать через анимации. То есть в процессе строить анимацию, а в конце записать ее в файл .gi
 
     def visualization(self,timestep,x_down,y_down,x_up,y_up):
         plt.xlim([x_down, x_up]) 
@@ -255,7 +232,19 @@ class Simulation:
         cur_dt = datetime.now()
         plt.savefig(f'image_{cur_dt.month}-{cur_dt.day}-{cur_dt.hour}-{cur_dt.minute}-{cur_dt.second}-{cur_dt.microsecond}.png',dpi=200)
         
-        
+        def Creating_Gif(self,):
+        # получим список с именами всех картинок, находящихся в папке
+        frames = os.listdir('frames')
+        frames = sorted(frames)
+        frames[0].save(
+            'Simulation.gif',
+            save_all=True,
+            append_images=frames[1:],  # Срез который игнорирует первый кадр.
+            optimize=True,
+            duration=25,
+            loop=0
+        )
+    
     def create_nodes(self, scenario_nodes):
         """
         Принимает на вход `nodes` - словарь, содержащий информацию об узлах, вида:
