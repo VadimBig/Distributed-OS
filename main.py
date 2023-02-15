@@ -1,4 +1,34 @@
+import copy
 from structures import *
+
+def get_brown(x_s, y_s, x_e, y_e, w, n=1):
+    def way_equation(x0, y0, d, t): return constraints_to_brownian(
+                brownian(x0, y0, n, t, w), x_s, y_s, x_e, y_e)
+
+    return way_equation
+
+def get_partline(x_s, y_s, x_e, y_e, w):
+    def way_equation(x0, y0, d, t): return eq_partline(
+                x0, y0, x_s, y_s, x_e, y_e, w, t, d)
+
+    return way_equation
+
+def get_static(x0, y0, d=1):
+    def way_equation(x0, y0, d, t): return (x0, y0, d)
+
+    return way_equation
+
+def get_circle(xc, yc, w, d=1):
+    def way_equation(x0, y0, d, t): return eq_circle(
+                x0, y0, xc, yc, w, d, t)
+    
+    return way_equation
+
+def get_sincos(x_s, x_e, y, w, sin):
+    def way_equation(x0, y0, d, t): return eq_sin_or_cos(
+                x0, y0, x_s, x_e, y, w, t, d, sin)
+    
+    return way_equation
 
 def generate_tasks(list_node_ids: list[str]) -> list[tuple]:
     """
@@ -42,8 +72,20 @@ def generate_tasks(list_node_ids: list[str]) -> list[tuple]:
 
 
 if __name__ == "__main__":
+    # задаём мощность классов узлов
+    maxpower = 1
+    powers = {
+        1: maxpower,
+        2: maxpower * 0.65,
+        3: maxpower * 0.35,
+        4: maxpower * 0.25,
+        5: maxpower * 0.2,
+        6: maxpower * 0.125,
+        7: maxpower * 0.075,
+        8: maxpower * 0.01
+    }
     # загружаем json с описанием сценария
-    number_scenario = 2
+    number_scenario = '2'
     np.random.seed(0)
     file = open(fr'.\scenario\config_scenario_{number_scenario}.json')
     scenario = json.load(file)
@@ -54,57 +96,80 @@ if __name__ == "__main__":
     poweroff_posibility = scenario['poweroff_posibility']
 
     nodes = dict()
-
+    way_equations = [0] * (len(scenario['nodes']) + 1)
     # Создаём словарь узлов {node_id: Node}
     for node_id in scenario['nodes']:
 
         x0, y0 = scenario['nodes'][node_id]['x'], scenario['nodes'][node_id]['y']
-        power = scenario['nodes'][node_id]['power']
+        power = powers[scenario['nodes'][node_id]['class_power']]
         way_eq = scenario['nodes'][node_id]['way_eq']
 
         # задаём уравнение движения для узла
         if way_eq == "static":
-            def way_equation(x0, y0, d, t): return (x0, y0, d)
-            # way_equation = lambda t: (x0, y0)
+            # def way_equation(x0, y0, d, t): return (x0, y0, d)
+            # way_equation = lambda x0, y0, d, t: (x0, y0, d)
+            # way_equation = lambda x0, y0, d, t: (x0, y0, d)
+            wq = get_static(x0, y0)
         elif way_eq == "circle":
             w = scenario['nodes'][node_id]['w']
             # её надо хранить в ноде
             direction = scenario['nodes'][node_id]['direction']
             xc, yc = scenario['nodes'][node_id]['xc'], scenario['nodes'][node_id]['yc']
 
-            def way_equation(x0, y0, d, t): return eq_circle(
-                x0, y0, xc, yc, w, d, t)
+            # def way_equation(x0, y0, d, t): return eq_circle(
+            #     x0, y0, xc, yc, w, d, t)
+
+            wq = get_circle(xc, yc, w, direction)
+            # way_equation = lambda x0, y0, d, t: eq_circle(
+            #     x0, y0, xc, yc, w, d, t)
         elif way_eq == "partline":
             x_s, y_s = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['y_start']
             x_e, y_e = scenario['nodes'][node_id]['x_end'], scenario['nodes'][node_id]['y_end']
-            w, direction = scenario['nodes'][node_id]['w'], 1
+            w, direction = scenario['nodes'][node_id]['w'], scenario['nodes'][node_id]['direction']
 
-            def way_equation(x0, y0, d, t): return eq_partline(
-                x0, y0, x_s, y_s, x_e, y_e, w, t, d)
+            # def way_equation(x0, y0, d, t): return eq_partline(
+            #     x0, y0, x_s, y_s, x_e, y_e, w, t, d)
+
+            wq = get_partline(x_s, y_s, x_e, y_e, w)
+            # way_equation = lambda x0, y0, d, t: eq_partline(
+            #     x0, y0, copy.deepcopy(x_s), copy.deepcopy(y_s), copy.deepcopy(x_e), copy.deepcopy(y_e), copy.deepcopy(w), t, d)
+
         elif way_eq == "sin_or_cos":
             x_s, x_e = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['x_end']
             w = scenario['nodes'][node_id]['w']
             its_sin = scenario['nodes'][node_id]['sin']
             y = y0
-            
-            def way_equation(x0, y0, d, t): return eq_sin_or_cos(
-                x0, y0, x_s, x_e, y, w, t, d, sin=its_sin)
+
+            # def way_equation(x0, y0, d, t): return eq_sin_or_cos(
+            #     x0, y0, x_s, x_e, y, w, t, d, sin=its_sin)
+
+            wq = get_sincos(x_s, x_e, y, w, its_sin)
+            # way_equation = lambda x0, y0, d, t: eq_sin_or_cos(
+            #     x0, y0, x_s, x_e, y, w, t, d, sin=its_sin)
         elif way_eq == "brownian":
             n = 1
             w = scenario['nodes'][node_id]['w']
             x_s, y_s = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['y_start']
             x_e, y_e = scenario['nodes'][node_id]['x_end'], scenario['nodes'][node_id]['y_end']
 
-            def way_equation(x0, y0, d, t): return constraints_to_brownian(
-                brownian(x0, y0, n, t, w), x_s, y_s, x_e, y_e)
+            # def way_equation(x0, y0, d, t): return constraints_to_brownian(
+            #     brownian(x0, y0, n, t, w), x_s, y_s, x_e, y_e)
+
+            wq = get_brown(x_s, y_s, x_e, y_e, w)
+            # way_equation = lambda x0, y0, d, t: constraints_to_brownian(
+            #     brownian(x0, y0, n, t, w), x_s, y_s, x_e, y_e)
+            # way_equations[int(node_id)] = lambda x0, y0, d, t: constraints_to_brownian(
+            #     brownian(x0, y0, n, t, w), scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['y_start'], scenario['nodes'][node_id]['x_end'], scenario['nodes'][node_id]['y_end'])
         else:
             print(
                 f"Для узла {node_id} задано не реализованное уравнение движения - {way_eq}.")
             raise ValueError
-        # задаём узел
-        nodes[int(node_id)] = Node(scenario['nodes'][node_id]['x'], scenario['nodes']
-                                   [node_id]['y'], scenario['nodes'][node_id]['power'], way_equation)
+        # # задаём узел
+        # nodes[int(node_id)] = Node(scenario['nodes'][node_id]['x'], scenario['nodes']
+        #                            [node_id]['y'], scenario['nodes'][node_id]['power'], way_equation)
+        nodes[int(node_id)] = Node(x0, y0, power, wq)
 
+    print(nodes)
     # генерируем сценарии
     node_ids = [int(a) for a in list(scenario['nodes'].keys())]
     tasks = generate_tasks(node_ids)
@@ -124,7 +189,7 @@ if __name__ == "__main__":
     # net.update(104,0.1)
     # print(net.nodes)
     sim = Simulation(tasks=tasks, net=net, step=10,logger=logger)
-    sim.run(200,(-10, -10, 10, 10),save_dir="test_1")
+    sim.run(20000,(-10, -10, 10, 10),save_dir="test_1") # 200
 
     # 1. Сценарии. Разобрать с генератором задач
     # 2. Переменная хранения состояния сети, интерфейс для использования в Simulator (описан в init класса Net)

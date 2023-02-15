@@ -1,6 +1,7 @@
 import math
 from scipy.stats import norm
 import numpy as np
+import copy
 
 
 def brownian(x, y, n: int, dt: float, delta: float):
@@ -45,6 +46,7 @@ def brownian(x, y, n: int, dt: float, delta: float):
     Note that the initial value `x0` is not included in the returned array.
     """
     x0 = np.asarray([[x], [y]])
+    # print(f'x0: {x0}', end=' ')
     # For each element of x0, generate a sample of n numbers from a
     # normal distribution.
     r = norm.rvs(size=x0.shape + (n,), scale=delta*math.sqrt(dt))
@@ -57,6 +59,7 @@ def brownian(x, y, n: int, dt: float, delta: float):
 
     # Add the initial condition.
     out += np.expand_dims(x0, axis=-1)
+    # print(f'brownian: {out}', end=' ')
 
     return out
 
@@ -75,6 +78,7 @@ def constraints_to_brownian(state, x0=-5, y0=-5, x1=5, y1=5):
     elif y > y1:
         y = y1 - (y - y1)
 
+    # print(f'withconstr: {x, y}')
     return x, y, 1
 
 
@@ -90,6 +94,8 @@ def eq_circle(x0, y0, xc, yc, w, direction, t):
     На выход - положение точки в момент времени `t`: `(x, y)`
     """
     r = ((x0 - xc)**2 + (y0 - yc)**2)**0.5
+    # phi0 = math.acos((x0 - xc) / r)
+
     if y0 >= yc:
         phi0 = math.acos((x0 - xc) / r)
     else:
@@ -111,7 +117,7 @@ def eq_partline(x0, y0, x_start, y_start, x_end, y_end, v, t, direction):
 
     На выход - координаты точки и направление: `(x1, y1, direction)`
     """
-    phi = math.atan((y_start - y_end) / (x_start - x_end))
+    phi = copy.deepcopy(math.atan((y_start - y_end) / (x_start - x_end)))
     delta_x = math.cos(phi) * v * t
     delta_y = math.sin(phi) * v * t
 
@@ -121,7 +127,8 @@ def eq_partline(x0, y0, x_start, y_start, x_end, y_end, v, t, direction):
         if x1 > x_end:
             x1 = x_end - (x1 - x_end)
             y1 = y_end - (y1 - y_end)
-            direction = -1      
+            direction = -1
+            
     else:
         x1 = x0 - delta_x
         y1 = y0 - delta_y
@@ -130,6 +137,7 @@ def eq_partline(x0, y0, x_start, y_start, x_end, y_end, v, t, direction):
             y1 = y_start + (y_start - y1)
             direction = 1
 
+    # print(f'{x_start, y_start, x_end, y_end}')
     return (x1, y1, direction)
 
 def eq_sin_or_cos(x0, y0, x_start, x_end, y, v, t, direction, sin=True):
@@ -143,7 +151,7 @@ def eq_sin_or_cos(x0, y0, x_start, x_end, y, v, t, direction, sin=True):
 
     На выход - координаты точки и направление: `(x1, y1, direction)`
     """
-   if direction == 1:
+    if direction == 1:
         x1 = x0 + v * t
         if x1 > x_end:
             x1 = x_end - (x1 - x_end)
