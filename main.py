@@ -85,9 +85,10 @@ if __name__ == "__main__":
             x_s, x_e = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['x_end']
             w = scenario['nodes'][node_id]['w']
             its_sin = scenario['nodes'][node_id]['sin']
-
+            y = y0
+            
             def way_equation(x0, y0, d, t): return eq_sin_or_cos(
-                x0, y0, x_s, x_e, w, t, d, sin=its_sin)
+                x0, y0, x_s, x_e, y, w, t, d, sin=its_sin)
         elif way_eq == "brownian":
             n = 1
             w = scenario['nodes'][node_id]['w']
