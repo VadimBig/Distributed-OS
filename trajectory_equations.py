@@ -132,7 +132,7 @@ def eq_partline(x0, y0, x_start, y_start, x_end, y_end, v, t, direction):
 
     return (x1, y1, direction)
 
-def eq_sin_or_cos(x0, y0, x_start, x_end, v, t, direction, sin=True):
+def eq_sin_or_cos(x0, y0, x_start, x_end, y, v, t, direction, sin=True):
     """
     Уравнение движения вдоль синуса/косинуса (неравномерное)
     * `x_start`, `x_end` - координаты начала и конца синуса
