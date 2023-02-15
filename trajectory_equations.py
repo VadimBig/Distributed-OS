@@ -65,7 +65,7 @@ def constraints_to_brownian(state, x0=-5, y0=-5, x1=5, y1=5):
     * `x0`, `x1` - границы по оси X
     * `y0`, `y1` - границы по оси Y
     """
-    x, y = [int(i) for i in state]
+    x, y = [float(i) for i in state]
     if x < x0:
         x = x0 + (x0 - x)
     elif x  > x1:
@@ -89,10 +89,14 @@ def eq_circle(x0, y0, xc, yc, w, direction, t):
 
     На выход - положение точки в момент времени `t`: `(x, y)`
     """
+    r = ((x0 - xc)**2 + (y0 - yc)**2)**0.5
+    if y0 >= yc:
+        phi0 = math.acos((x0 - xc) / r)
+    else:
+        phi0 = 2 * math.pi - math.acos((x0 - xc) / r)
 
-    phi0 = math.atan(y0 / x0)
-    x = ((x0 - xc)**2 + (y0 - yc)**2)**0.5 * math.cos(phi0 + w * t * direction)
-    y = ((x0 - xc)**2 + (y0 - yc)**2)**0.5 * math.sin(phi0 + w * t * direction)
+    x = r * math.cos(phi0 + w * t * direction)
+    y = r * math.sin(phi0 + w * t * direction)
 
     return x, y, direction
 
@@ -107,7 +111,7 @@ def eq_partline(x0, y0, x_start, y_start, x_end, y_end, v, t, direction):
 
     На выход - координаты точки и направление: `(x1, y1, direction)`
     """
-    phi = math.asin((y_start - y_end) / (x_start - x_end))
+    phi = math.atan((y_start - y_end) / (x_start - x_end))
     delta_x = math.cos(phi) * v * t
     delta_y = math.sin(phi) * v * t
 
@@ -117,7 +121,7 @@ def eq_partline(x0, y0, x_start, y_start, x_end, y_end, v, t, direction):
         if x1 > x_end:
             x1 = x_end - (x1 - x_end)
             y1 = y_end - (y1 - y_end)
-            direction = -1
+            direction = -1      
     else:
         x1 = x0 - delta_x
         y1 = y0 - delta_y
@@ -139,7 +143,7 @@ def eq_sin_or_cos(x0, y0, x_start, x_end, v, t, direction, sin=True):
 
     На выход - координаты точки и направление: `(x1, y1, direction)`
     """
-    if direction == 1:
+   if direction == 1:
         x1 = x0 + v * t
         if x1 > x_end:
             x1 = x_end - (x1 - x_end)
@@ -151,6 +155,6 @@ def eq_sin_or_cos(x0, y0, x_start, x_end, v, t, direction, sin=True):
             direction = 1
     
     if sin == True:
-        return (x1, math.sin(x1) + y0, direction)
+        return (x1, math.sin(x1) + y, direction)
     else:
-        return (x1, math.cos(x1) + y0, direction)
+        return (x1, math.cos(x1) + y, direction)
