@@ -3,7 +3,7 @@ from scipy.stats import norm
 import numpy as np
 
 
-def brownian(x, y, n: int, dt: float, delta: float, out=None):
+def brownian(x, y, n: int, dt: float, delta: float):
     """
     Уравнение броуновского движения:
         X(t) = X(0) + N(0, delta**2 * t; 0, t)
@@ -44,16 +44,12 @@ def brownian(x, y, n: int, dt: float, delta: float, out=None):
     
     Note that the initial value `x0` is not included in the returned array.
     """
-
     x0 = np.asarray([[x], [y]])
-
     # For each element of x0, generate a sample of n numbers from a
     # normal distribution.
     r = norm.rvs(size=x0.shape + (n,), scale=delta*math.sqrt(dt))
-
     # If `out` was not given, create an output array.
-    if out is None:
-        out = np.empty(r.shape)
+    out = np.empty(r.shape)
 
     # This computes the Brownian motion by forming the cumulative sum of
     # the random samples. 
@@ -79,7 +75,7 @@ def constraints_to_brownian(state, x0=-5, y0=-5, x1=5, y1=5):
     elif y > y1:
         y = y1 - (y - y1)
 
-    return np.array([[x], [y]])
+    return x, y, 1
 
 
 def eq_circle(x0, y0, xc, yc, w, direction, t):
@@ -93,12 +89,12 @@ def eq_circle(x0, y0, xc, yc, w, direction, t):
 
     На выход - положение точки в момент времени `t`: `(x, y)`
     """
-    r = ((x0 - xc)**2 + (y0 - yc)**2)**0.5
-    phi0 = math.acos((yc - y0) / r)
-    x = r * math.cos(phi0 + w * t * direction)
-    y = r * math.sin(phi0 + w * t * direction)
 
-    return (x, y)
+    phi0 = math.atan(y0 / x0)
+    x = ((x0 - xc)**2 + (y0 - yc)**2)**0.5 * math.cos(phi0 + w * t * direction)
+    y = ((x0 - xc)**2 + (y0 - yc)**2)**0.5 * math.sin(phi0 + w * t * direction)
+
+    return x, y, direction
 
 def eq_partline(x0, y0, x_start, y_start, x_end, y_end, v, t, direction):
     """
@@ -111,7 +107,7 @@ def eq_partline(x0, y0, x_start, y_start, x_end, y_end, v, t, direction):
 
     На выход - координаты точки и направление: `(x1, y1, direction)`
     """
-    phi = math.atan((y_start - y_end) / (x_start - x_end))
+    phi = math.asin((y_start - y_end) / (x_start - x_end))
     delta_x = math.cos(phi) * v * t
     delta_y = math.sin(phi) * v * t
 
@@ -122,7 +118,6 @@ def eq_partline(x0, y0, x_start, y_start, x_end, y_end, v, t, direction):
             x1 = x_end - (x1 - x_end)
             y1 = y_end - (y1 - y_end)
             direction = -1
-            
     else:
         x1 = x0 - delta_x
         y1 = y0 - delta_y

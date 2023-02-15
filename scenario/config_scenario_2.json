@@ -36,7 +36,7 @@
             "y": -1,
             "xc": 0,
             "yc": 0,
-            "power": 10,
+            "power": 100,
             "w": 10,
             "way_eq": "circle",
             "direction": 1
@@ -59,55 +59,7 @@
             "x_end": 2,
             "y_end": 2,
             "power": 10,
-            "w": 1,
-            "way_eq": "partline",
-            "direction": 1
-        },
-        "7": {
-            "x": 0,
-            "y": 0,
-            "x_start": -2,
-            "y_start": 2,
-            "x_end": 2,
-            "y_end": -2,
-            "power": 10,
             "w": 5,
-            "way_eq": "partline",
-            "direction": 1
-        },
-        "8": {
-            "x": -2,
-            "y": 0,
-            "x_start": -3,
-            "y_start": 0,
-            "x_end": 3,
-            "y_end": 0,
-            "power": 10,
-            "w": 3,
-            "way_eq": "partline",
-            "direction": 1
-        },
-        "9": {
-            "x": 0,
-            "y": 0,
-            "x_start": -3,
-            "y_start": -2,
-            "x_end": 3,
-            "y_end": 2,
-            "power": 10,
-            "w": 4,
-            "way_eq": "partline",
-            "direction": 1
-        },
-        "10": {
-            "x": 0,
-            "y": 0,
-            "x_start": -3,
-            "y_start": 2,
-            "x_end": 3,
-            "y_end": -2,
-            "power": 10,
-            "w": 2,
             "way_eq": "partline",
             "direction": 1
         }
