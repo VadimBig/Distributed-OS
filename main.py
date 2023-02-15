@@ -234,8 +234,15 @@ class Simulation:
         
         def Creating_Gif(self,):
         # получим список с именами всех картинок, находящихся в папке
-        frames = os.listdir('frames')
-        frames = sorted(frames)
+        frames_Name = os.listdir('frames')
+        frames_Name = sorted(frames_Name)
+        frames = []
+        #quantity_of_Frames = len(frames_Name)
+        for frame_number in range(frames_Name):
+            # Открываем изображение каждого кадра.
+            frame = Image.open(f'frames/image_{frame_number}.png')
+            # Добавляем кадр в список с кадрами.
+            frames.append(frame)
         frames[0].save(
             'Simulation.gif',
             save_all=True,
