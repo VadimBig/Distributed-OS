@@ -5,7 +5,13 @@ from collections import deque
 from typing import Callable, Iterable
 from trajectory_equations import eq_circle, eq_partline, eq_sin_or_cos, brownian, constraints_to_brownian
 import json
-
+import matplotlib.pyplot as plt
+from datetime import datetime
+import glob
+from PIL import Image
+from datetime import datetime
+import math
+import os
 
 @dataclass(frozen=True)  # (можно просто tuple или как удобнее)
 class Task:
@@ -541,25 +547,83 @@ class Simulation:
 
     # перемещения узлом и многое другое можно визуализировать через анимации. То есть в процессе строить анимацию, а в конце записать ее в файл .gif
 
-    def visualization(self,):
-        # не мы
-        pass
+    def visualization(self,save_dir, boundaries):
+        x_down,y_down,x_up,y_up = boundaries
+        plt.xlim([x_down, x_up]) 
+        plt.ylim([y_down, y_up]) 
+        task_nodes=[]
+        routes_edges=[]
+        for task in self.net.transfers:
+            route=task[1]
+            customer=route[0]
+            performer=route[-1]
+            task_nodes.extend([customer,performer])
+            for i in range(len(route)-1):
+                routes_edges.append([route[i],route[i+1]])
+        
+        for u,v in self.net.G.edges():
+            Xu,Yu=self.net.nodes[u].x,self.net.nodes[u].y
+            Xv,Yv=self.net.nodes[v].x,self.net.nodes[v].y
+            if [u,v] in routes_edges :
+                plt.plot([Xu,Xv],[Yu,Yv],'g',linewidth=2)
+                plt.arrow(Xu,Yu,(Xv-Xu)/2,(Yv-Yu)/2,length_includes_head=True,head_length = 0.5,head_width = 0.3,color='g')
+            elif [v,u] in routes_edges:
+                plt.plot([Xu,Xv],[Yu,Yv],'g',linewidth=2)
+                plt.arrow(Xv,Yv,(Xu-Xv)/2,(Yu-Yv)/2,length_includes_head=True,head_length = 0.5,head_width = 0.3,color='g')
+            else:
+                plt.plot([Xu,Xv],[Yu,Yv],'b',linewidth=1)
+                    
 
-    def run(self, sim_time):
+        for node_id in self.net.nodes.keys():
+            x,y = self.net.nodes[node_id].x, self.net.nodes[node_id].y
+            if node_id in task_nodes:
+                plt.plot(x,y,'ro',markersize=12)
+            elif self.net.nodes[node_id].isCalculating:
+                plt.plot(x,y,'rp',markersize=12)
+            else:
+                plt.plot(x,y,'bo',markersize=12)
+            plt.text(x,y,f"{node_id}",horizontalalignment='center', 
+               verticalalignment='center',fontweight='bold',size=7,color='black')
+        
+        cur_dt = datetime.now()
+        plt.savefig(f'{save_dir}/image_{cur_dt.month}-{cur_dt.day}-{cur_dt.hour}-{cur_dt.minute}-{cur_dt.second}-{cur_dt.microsecond}.png',dpi=200)
+        plt.clf()
+
+    def run(self, sim_time,boundaries, save_dir=None):
         '''
             Start simualtion.
             sim_time -- time of a simulation in ms
         '''
-        import pprint
-        pp = pprint.PrettyPrinter(indent=4)
+        if save_dir:
+            if not os.path.exists(save_dir):
+                os.mkdir(save_dir)
         while self.time <= sim_time:
             self.time += self.step
             self.net.update(self.time, self.step)
             curr_tasks = self.__current_tasks()
             self.net.schedule(timestep=self.time, to_schedule=curr_tasks)
             self.net.schedule_all(timestep=self.time)
+            if save_dir:
+                self.visualization(boundaries=boundaries,save_dir=save_dir)
         self.logger.print_logs()
-        
+        if save_dir:
+            self.__make_gif(save_dir)
+
+    def __make_gif(self,frames_dir):
+        # получим список с именами всех картинок, находящихся в папке
+        files = os.listdir(frames_dir)
+        files = [os.path.join(frames_dir, f) for f in files] # add path to each file
+        files.sort(key=lambda x: os.path.getmtime(x))
+        #quantity_of_Frames = len(frames_Name)
+        frames = [Image.open(img_path) for img_path in files]
+        frames[0].save(
+            'Simulation.gif',
+            save_all=True,
+            append_images=frames[1:],  # Срез который игнорирует первый кадр.
+            optimize=True,
+            duration=25,
+            loop=0
+        )        
 
     def reset(self,):
         '''

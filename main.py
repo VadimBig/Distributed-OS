@@ -113,7 +113,7 @@ if __name__ == "__main__":
         lambda d: max_bandwidth - d*(max_bandwidth/max_dist))
     logger = Logger('text.txt')
     # задаём сеть
-    net = Net(bandwidth_formula, nodes,logger=logger,debug_info=False,mode='elementary')
+    net = Net(bandwidth_formula, nodes,logger=logger,debug_info=False,mode='basic')
     # customer, time, task = tasks[0]
     # net.update(0,0)
     # print(task)
@@ -123,7 +123,7 @@ if __name__ == "__main__":
     # net.update(104,0.1)
     # print(net.nodes)
     sim = Simulation(tasks=tasks, net=net, step=10,logger=logger)
-    sim.run(200000)
+    sim.run(200,(-10, -10, 10, 10),save_dir="test_1")
 
     # 1. Сценарии. Разобрать с генератором задач
     # 2. Переменная хранения состояния сети, интерфейс для использования в Simulator (описан в init класса Net)
