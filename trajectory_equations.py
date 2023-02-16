@@ -1,9 +1,10 @@
 import math
 from scipy.stats import norm
 import numpy as np
+import copy
 
 
-def brownian(x, y, n: int, dt: float, delta: float, out=None):
+def brownian(x, y, n: int, dt: float, delta: float):
     """
     Уравнение броуновского движения:
         X(t) = X(0) + N(0, delta**2 * t; 0, t)
@@ -44,16 +45,13 @@ def brownian(x, y, n: int, dt: float, delta: float, out=None):
     
     Note that the initial value `x0` is not included in the returned array.
     """
-
     x0 = np.asarray([[x], [y]])
-
+    # print(f'x0: {x0}', end=' ')
     # For each element of x0, generate a sample of n numbers from a
     # normal distribution.
     r = norm.rvs(size=x0.shape + (n,), scale=delta*math.sqrt(dt))
-
     # If `out` was not given, create an output array.
-    if out is None:
-        out = np.empty(r.shape)
+    out = np.empty(r.shape)
 
     # This computes the Brownian motion by forming the cumulative sum of
     # the random samples. 
@@ -61,6 +59,7 @@ def brownian(x, y, n: int, dt: float, delta: float, out=None):
 
     # Add the initial condition.
     out += np.expand_dims(x0, axis=-1)
+    # print(f'brownian: {out}', end=' ')
 
     return out
 
@@ -69,7 +68,7 @@ def constraints_to_brownian(state, x0=-5, y0=-5, x1=5, y1=5):
     * `x0`, `x1` - границы по оси X
     * `y0`, `y1` - границы по оси Y
     """
-    x, y = [int(i) for i in state]
+    x, y = [float(i) for i in state]
     if x < x0:
         x = x0 + (x0 - x)
     elif x  > x1:
@@ -79,7 +78,8 @@ def constraints_to_brownian(state, x0=-5, y0=-5, x1=5, y1=5):
     elif y > y1:
         y = y1 - (y - y1)
 
-    return np.array([[x], [y]])
+    # print(f'withconstr: {x, y}')
+    return x, y, 1
 
 
 def eq_circle(x0, y0, xc, yc, w, direction, t):
@@ -94,11 +94,17 @@ def eq_circle(x0, y0, xc, yc, w, direction, t):
     На выход - положение точки в момент времени `t`: `(x, y)`
     """
     r = ((x0 - xc)**2 + (y0 - yc)**2)**0.5
-    phi0 = math.acos((yc - y0) / r)
+    # phi0 = math.acos((x0 - xc) / r)
+
+    if y0 >= yc:
+        phi0 = math.acos((x0 - xc) / r)
+    else:
+        phi0 = 2 * math.pi - math.acos((x0 - xc) / r)
+
     x = r * math.cos(phi0 + w * t * direction)
     y = r * math.sin(phi0 + w * t * direction)
 
-    return (x, y)
+    return x, y, direction
 
 def eq_partline(x0, y0, x_start, y_start, x_end, y_end, v, t, direction):
     """
@@ -111,7 +117,7 @@ def eq_partline(x0, y0, x_start, y_start, x_end, y_end, v, t, direction):
 
     На выход - координаты точки и направление: `(x1, y1, direction)`
     """
-    phi = math.atan((y_start - y_end) / (x_start - x_end))
+    phi = copy.deepcopy(math.atan((y_start - y_end) / (x_start - x_end)))
     delta_x = math.cos(phi) * v * t
     delta_y = math.sin(phi) * v * t
 
@@ -131,9 +137,10 @@ def eq_partline(x0, y0, x_start, y_start, x_end, y_end, v, t, direction):
             y1 = y_start + (y_start - y1)
             direction = 1
 
+    # print(f'{x_start, y_start, x_end, y_end}')
     return (x1, y1, direction)
 
-def eq_sin_or_cos(x0, y0, x_start, x_end, v, t, direction, sin=True):
+def eq_sin_or_cos(x0, y0, x_start, x_end, y, v, t, direction, sin=True):
     """
     Уравнение движения вдоль синуса/косинуса (неравномерное)
     * `x_start`, `x_end` - координаты начала и конца синуса
@@ -156,6 +163,6 @@ def eq_sin_or_cos(x0, y0, x_start, x_end, v, t, direction, sin=True):
             direction = 1
     
     if sin == True:
-        return (x1, math.sin(x1) + y0, direction)
+        return (x1, math.sin(x1) + y, direction)
     else:
-        return (x1, math.cos(x1) + y0, direction)
+        return (x1, math.cos(x1) + y, direction)

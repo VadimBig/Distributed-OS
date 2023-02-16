@@ -7,8 +7,8 @@
             "sin": 1,
             "x_start": -4,
             "x_end": 4,
-            "class_power": 5,
-            "w": 0.0008,
+            "power": 5,
+            "w": 5,
             "way_eq": "sin_or_cos",
             "direction": 1
         },
@@ -18,8 +18,8 @@
             "sin": 0,
             "x_start": -4,
             "x_end": 4,
-            "class_power": 5,
-            "w": 0.0008,
+            "power": 10,
+            "w": 5,
             "way_eq": "sin_or_cos",
             "direction": 1
         },
@@ -30,8 +30,8 @@
             "y_start": 2,
             "x_end": 4,
             "y_end": 2,
-            "class_power": 5,
-            "w": 0.0008,
+            "power": 10,
+            "w": 10,
             "way_eq": "partline",
             "direction": 1
         },
@@ -42,8 +42,8 @@
             "y_start": -1,
             "x_end": 4,
             "y_end": -1,
-            "class_power": 5,
-            "w": 0.0008,
+            "power": 10,
+            "w": 10,
             "way_eq": "partline",
             "direction": 1
         },
@@ -54,8 +54,8 @@
             "y_start": 2,
             "x_end": 4,
             "y_end": 2,
-            "class_power": 5,
-            "w": 0.0008,
+            "power": 10,
+            "w": 10,
             "way_eq": "partline",
             "direction": -1
         },
@@ -66,8 +66,8 @@
             "y_start": -1,
             "x_end": 4,
             "y_end": -1,
-            "class_power": 5,
-            "w": 0.0008,
+            "power": 10,
+            "w": 10,
             "way_eq": "partline",
             "direction": -1
         }
