@@ -12,6 +12,7 @@ from PIL import Image
 from datetime import datetime
 import math
 import os
+import pandas as pd
 
 @dataclass(frozen=True)  # (можно просто tuple или как удобнее)
 class Task:
@@ -43,6 +44,15 @@ class Logger:
             time_start, time_end = self.tasks[task]
             print(
                 f'TASK: {task}\n\tTIME GIVEN TO THE NET: {time_start}\n\tTIME FINISHED: {time_end}')
+    
+    def stats(self,):
+        # calc mean, std, 
+        calc_durs = [self.tasks[task][1] - self.tasks[task][0] for task in self.tasks.keys()]
+        calc_durs = [x for x in calc_durs if x > 0]
+        df = pd.DataFrame()
+        df['calc_durs'] = calc_durs
+        
+        return df.describe()        
 
 
 class Node:
@@ -589,7 +599,7 @@ class Simulation:
         plt.savefig(f'{save_dir}/image_{cur_dt.month}-{cur_dt.day}-{cur_dt.hour}-{cur_dt.minute}-{cur_dt.second}-{cur_dt.microsecond}.png',dpi=200)
         plt.clf()
 
-    def run(self, sim_time,boundaries, save_dir=None):
+    def run(self, sim_time,boundaries, save_dir=None, describe_file=None):
         '''
             Start simualtion.
             sim_time -- time of a simulation in ms
@@ -608,6 +618,8 @@ class Simulation:
         self.logger.print_logs()
         if save_dir:
             self.__make_gif(save_dir)
+        if describe_file:
+            self.logger.stats().to_csv(describe_file)
 
     def __make_gif(self,frames_dir):
         # получим список с именами всех картинок, находящихся в папке
