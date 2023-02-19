@@ -2,27 +2,27 @@
     "count_devices": 4,
     "nodes": {
         "1": {
-            "x": -1,
-            "y": -1,
-            "power": 10,
+            "x": -5,
+            "y": -5,
+            "class_power": 1,
             "way_eq": "static"
         },
         "2": {
-            "x": -1,
-            "y": 1,
-            "power": 10,
+            "x": -5,
+            "y": 8,
+            "class_power": 7,
             "way_eq": "static"
         },
         "3": {
-            "x": 1,
-            "y": 1,
-            "power": 10,
+            "x": 9,
+            "y": 5,
+            "class_power": 8,
             "way_eq": "static"
         },
         "4": {
             "x": 1,
-            "y": -1,
-            "power": 10,
+            "y": -9,
+            "class_power": 6,
             "way_eq": "static"
         }
     },
