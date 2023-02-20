@@ -4,3 +4,4 @@ test.py
 __pycache__
 Simulation.gif
 test_1/
+sim_results/

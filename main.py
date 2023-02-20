@@ -1,4 +1,6 @@
 from structures import *
+import json
+
 
 def get_brown(x_s, y_s, x_e, y_e, w, n=1):
     def way_equation(x0, y0, d, t): return constraints_to_brownian(
@@ -141,7 +143,10 @@ if __name__ == "__main__":
         8: maxpower * 0.01 # смарт-часы
     }
     # загружаем json с описанием сценария
-    number_scenario = '1'
+    number_scenario = '3_2'
+    mode = 'elementary'
+    sim_time = 10_000_000 # ms
+    vis=False
     np.random.seed(0)
     file = open(fr'.\scenario\config_scenario_{number_scenario}.json')
     scenario = json.load(file)
@@ -204,7 +209,7 @@ if __name__ == "__main__":
         lambda d: max_bandwidth - d*(max_bandwidth/max_dist))
     logger = Logger('text.txt')
     # задаём сеть
-    net = Net(bandwidth_formula, nodes,logger=logger,debug_info=False,mode='basic')
+    net = Net(bandwidth_formula, nodes,logger=logger,debug_info=False,mode=mode)
     # customer, time, task = tasks[0]
     # net.update(0,0)
     # print(task)
@@ -213,8 +218,22 @@ if __name__ == "__main__":
     # net.update(103.9,103.9)
     # net.update(104,0.1)
     # print(net.nodes)
+    # format X_min, Y_min, X_max, Y_max
+    boundaries = {
+        '1': (-5, -9, 9, 8),
+        '2': (-3*np.sqrt(2), -3*np.sqrt(2), 3*np.sqrt(2), 3*np.sqrt(2)),
+        '3_1': (-4, -6, 4, 6),
+        '3_2': (-12, -12, 12, 12),
+        '4':(-4, -4, 4, 4)
+    }
+
+
     sim = Simulation(tasks=tasks, net=net, step=10,logger=logger)
-    sim.run(2000,(-10, -10, 10, 10),save_dir=None,describe_file='test_1.csv') # 200
+    if vis==True:
+        save_dir = f'sim_results/test_{number_scenario}_{mode}'
+    else:
+        save_dir=None
+    sim.run(sim_time,boundaries=boundaries[number_scenario],save_dir=None,describe_file=f'sim_results/test_{number_scenario}_{mode}.csv') # 200
 
     # 1. Сценарии. Разобрать с генератором задач
     # 2. Переменная хранения состояния сети, интерфейс для использования в Simulator (описан в init класса Net)

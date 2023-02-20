@@ -4,15 +4,13 @@ import numpy as np
 from collections import deque
 from typing import Callable, Iterable
 from trajectory_equations import eq_circle, eq_partline, eq_sin_or_cos, brownian, constraints_to_brownian
-import json
 import matplotlib.pyplot as plt
 from datetime import datetime
-import glob
 from PIL import Image
 from datetime import datetime
-import math
 import os
 import pandas as pd
+from tqdm import tqdm
 
 @dataclass(frozen=True)  # (можно просто tuple или как удобнее)
 class Task:
@@ -214,7 +212,7 @@ class Net:
         # 100 мб/c. Меняет в зависимости от растояния по нелинейным формулам
         self.max_bandwidth = 100
         # максимальное расстояние на котором поддерживается свзять 30м. Если расстояние больше, то связь разорвана
-        self.max_distance = 30
+        self.max_distance = 10
         # считаем силу сигнала в зависимости от расстояния по этой формуле. должна учитывать max_bandwidth
         self.bandwidth_formula = bandwidth_formula(
             self.max_distance, self.max_bandwidth)
@@ -557,8 +555,8 @@ class Simulation:
 
     # перемещения узлом и многое другое можно визуализировать через анимации. То есть в процессе строить анимацию, а в конце записать ее в файл .gif
 
-    def visualization(self,save_dir, boundaries):
-        x_down,y_down,x_up,y_up = boundaries
+    def visualization(self, save_dir, boundaries):
+        x_down, y_down,x_up,y_up = boundaries
         plt.xlim([x_down, x_up]) 
         plt.ylim([y_down, y_up]) 
         task_nodes=[]
@@ -594,7 +592,7 @@ class Simulation:
                 plt.plot(x,y,'bo',markersize=12)
             plt.text(x,y,f"{node_id}",horizontalalignment='center', 
                verticalalignment='center',fontweight='bold',size=7,color='black')
-        
+        plt.title(f'time={self.time}')
         cur_dt = datetime.now()
         plt.savefig(f'{save_dir}/image_{cur_dt.month}-{cur_dt.day}-{cur_dt.hour}-{cur_dt.minute}-{cur_dt.second}-{cur_dt.microsecond}.png',dpi=200)
         plt.clf()
@@ -607,14 +605,18 @@ class Simulation:
         if save_dir:
             if not os.path.exists(save_dir):
                 os.mkdir(save_dir)
-        while self.time <= sim_time:
-            self.time += self.step
-            self.net.update(self.time, self.step)
-            curr_tasks = self.__current_tasks()
-            self.net.schedule(timestep=self.time, to_schedule=curr_tasks)
-            self.net.schedule_all(timestep=self.time)
-            if save_dir:
-                self.visualization(boundaries=boundaries,save_dir=save_dir)
+        steps = sim_time // self.step
+        with tqdm(total=steps) as pbar:
+            while self.time <= sim_time:
+                self.time += self.step
+                self.net.update(self.time, self.step)
+                curr_tasks = self.__current_tasks()
+                self.net.schedule(timestep=self.time, to_schedule=curr_tasks)
+                if self.time % 10000 == 0:
+                    self.net.schedule_all(timestep=self.time)
+                if save_dir and self.time % 500 == 0:
+                    self.visualization(boundaries=boundaries,save_dir=save_dir)
+                pbar.update(1)
         self.logger.print_logs()
         if save_dir:
             self.__make_gif(save_dir)
@@ -633,7 +635,7 @@ class Simulation:
             save_all=True,
             append_images=frames[1:],  # Срез который игнорирует первый кадр.
             optimize=True,
-            duration=25,
+            duration=120,
             loop=0
         )        
 
