@@ -7,7 +7,7 @@ import copy
 def brownian(x, y, n: int, dt: float, delta: float):
     """
     Уравнение броуновского движения:
-        X(t) = X(0) + N(0, delta**2 * t; 0, t)
+        X(t) = X(0) + N(0, delta * t; 0, t)
 
     где N(a,b; t0, t1) нормальная распределённая случайная величина со средним a и
     дисперсией b. Параметры t0 и t1 make explicit the statistical
@@ -17,7 +17,7 @@ def brownian(x, y, n: int, dt: float, delta: float):
     
     Written as an iteration scheme,
 
-        X(t + dt) = X(t) + N(0, delta**2 * dt; t, t+dt)
+        X(t + dt) = X(t) + N(0, delta * dt; t, t+dt)
 
 
     If `x0` is an array (or array-like), each value in `x0` is treated as
@@ -49,7 +49,7 @@ def brownian(x, y, n: int, dt: float, delta: float):
     # print(f'x0: {x0}', end=' ')
     # For each element of x0, generate a sample of n numbers from a
     # normal distribution.
-    r = norm.rvs(size=x0.shape + (n,), scale=delta*math.sqrt(dt))
+    r = norm.rvs(size=x0.shape + (n,), scale=math.sqrt(delta)*math.sqrt(dt))
     # If `out` was not given, create an output array.
     out = np.empty(r.shape)
 
