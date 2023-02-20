@@ -619,7 +619,7 @@ class Simulation:
                 self.net.schedule(timestep=self.time, to_schedule=curr_tasks)
                 if self.time % 10000 == 0:
                     self.net.schedule_all(timestep=self.time)
-                if save_dir and self.time % 500 == 0:
+                if save_dir and self.time % 100 == 0:
                     self.visualization(boundaries=boundaries,save_dir=save_dir)
                 pbar.update(1)
         self.logger.print_logs()

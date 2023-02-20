@@ -149,9 +149,9 @@ if __name__ == "__main__":
         8: maxpower * 0.01 # смарт-часы
     }
     # загружаем json с описанием сценария
-    number_scenario = '2'
-    mode = 'elementary'
-    sim_time = 10_000 # ms
+    number_scenario = '3_2'
+    mode = 'basic'
+    sim_time = 100_000 # ms
     vis=True
     np.random.seed(1)
     file = open(fr'.\scenario\config_scenario_{number_scenario}.json')
