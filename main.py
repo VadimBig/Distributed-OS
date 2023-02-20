@@ -31,7 +31,7 @@ def get_sincos(x_s, x_e, y, w, sin):
     
     return way_equation
 
-def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=2.0, std=0.5 ** 0.5) -> list[tuple]:
+def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=3.0, std=0.5 ** 0.5) -> list[tuple]:
     """
     Для набора id девайсов генерирует список задач, который включает:
     * `calc_size` - вычислительную сложность
@@ -149,10 +149,10 @@ if __name__ == "__main__":
         8: maxpower * 0.01 # смарт-часы
     }
     # загружаем json с описанием сценария
-    number_scenario = '1'
-    mode = 'basic'
-    sim_time = 10_000_000 # ms
-    vis=False
+    number_scenario = '2'
+    mode = 'elementary'
+    sim_time = 10_000 # ms
+    vis=True
     np.random.seed(1)
     file = open(fr'.\scenario\config_scenario_{number_scenario}.json')
     scenario = json.load(file)
@@ -239,7 +239,7 @@ if __name__ == "__main__":
         save_dir = f'sim_results/test_{number_scenario}_{mode}'
     else:
         save_dir=None
-    sim.run(sim_time,boundaries=boundaries[number_scenario],save_dir=None,describe_file=f'sim_results/test_{number_scenario}_{mode}.csv') # 200
+    sim.run(sim_time,boundaries=boundaries[number_scenario],save_dir=save_dir,describe_file=f'sim_results/test_{number_scenario}_{mode}.csv') # 200
 
     # 1. Сценарии. Разобрать с генератором задач
     # 2. Переменная хранения состояния сети, интерфейс для использования в Simulator (описан в init класса Net)

@@ -243,7 +243,8 @@ class Net:
                     self.G.remove_edge(key_i, key_j)
 
     def __check_connection(self, id_1, id_2):
-        if nx.shortest_path(self.G, id_1, id_2):
+
+        if nx.has_path(self.G, id_1, id_2):
             return True
         return False
 
@@ -326,12 +327,16 @@ class Net:
                 else:
                     transfers_to_finish.append(transfer)
             # CHECK IF THE TRANSFERS ARE STILL POSSIBLE
+            break_loop = False
             for i in range(len(route)):
                 for j in range(i+1, len(route)):
                     if not self.__check_connection(route[i], route[j]):
                         transfers_to_stop.append(transfer)
                         # exit from outer loop
+                        break_loop = True
                         break
+                if break_loop:
+                    break
         transfers_to_continue = [
             transfer for transfer in self.transfers if transfer not in transfers_to_stop and transfer not in transfers_to_finish and transfer not in transfers_calc_results_to_finish]
 
@@ -355,6 +360,7 @@ class Net:
             customer_id = finished_task.customer_id
             if customer_id != performer_id:
                 route, cost = self.shortest_path(performer_id, customer_id)
+                # print(route, cost)
                 if cost == -1:  # if there are no path between performer and customer?
                     not_sended.append((performer_id, finished_task))
                 else:
@@ -376,7 +382,7 @@ class Net:
                 forgotten_tasks = self.nodes[node_id].forget_tasks(
                     lost_connections)
                 for ftask in forgotten_tasks:
-                    self.nodes[customer_id].remember_given_taks(ftask)
+                    self.nodes[customer_id].remember_given_task(ftask)
             # collect data to be sent back
             finished_task = self.nodes[node_id].calc(timedelta)
             if finished_task:
@@ -530,15 +536,14 @@ class Net:
                         if cost[u] != -1 and min(w['weight'], cost[u]) > cost[v]:
                             cost[v] = min(w['weight'], cost[u])
                             vertexes[v] = u
-                route = [[to_]]
+                route = [to_]
                 r = to_
                 while r != from_:
                     r = vertexes[r]
-                    route[0].insert(0, r)
-                route.append(cost[to_])
-                return route
-
-        return [[from_], -1]
+                    route.insert(0, r)
+                # route.append(cost[to_])
+                return route, cost[to_]
+        return [from_], -1
 
 
 class Simulation:
