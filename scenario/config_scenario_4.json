@@ -9,7 +9,7 @@
             "x_end": 10,
             "y_end": 10,
             "class_power": 6,
-            "w": 0.0003,
+            "w": 0.008,
             "way_eq": "brownian",
             "direction": 1
         },
@@ -21,7 +21,7 @@
             "x_end": 10,
             "y_end": 10,
             "class_power": 5,
-            "w": 0.0003,
+            "w": 0.008,
             "way_eq": "brownian",
             "direction": 1
         },
@@ -33,7 +33,7 @@
             "x_end": 10,
             "y_end": 10,
             "class_power": 3,
-            "w": 0.0003,
+            "w": 0.008,
             "way_eq": "brownian",
             "direction": 1
         },
@@ -45,7 +45,7 @@
             "x_end": 10,
             "y_end": 10,
             "class_power": 5,
-            "w": 0.0003,
+            "w": 0.008,
             "way_eq": "brownian",
             "direction": 1
         },
@@ -57,7 +57,7 @@
             "x_end": 10,
             "y_end": 10,
             "class_power": 3,
-            "w": 0.0003,
+            "w": 0.008,
             "way_eq": "brownian",
             "direction": 1
         },
@@ -69,7 +69,7 @@
             "x_end": 10,
             "y_end": 10,
             "class_power": 5,
-            "w": 0.0003,
+            "w": 0.008,
             "way_eq": "brownian",
             "direction": 1
         },
@@ -81,7 +81,7 @@
             "x_end": 10,
             "y_end": 10,
             "class_power": 8,
-            "w": 0.0003,
+            "w": 0.008,
             "way_eq": "brownian",
             "direction": 1
         },
@@ -93,7 +93,7 @@
             "x_end": 10,
             "y_end": 10,
             "class_power": 8,
-            "w": 0.0003,
+            "w": 0.008,
             "way_eq": "brownian",
             "direction": 1
         },
@@ -105,7 +105,7 @@
             "x_end": 10,
             "y_end": 10,
             "class_power": 6,
-            "w": 0.0003,
+            "w": 0.008,
             "way_eq": "brownian",
             "direction": 1
         },
@@ -117,7 +117,7 @@
             "x_end": 10,
             "y_end": 10,
             "class_power": 5,
-            "w": 0.0003,
+            "w": 0.008,
             "way_eq": "brownian",
             "direction": 1
         }
