@@ -51,7 +51,11 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=2.0) -> list[tu
     prev_time = 0.0
     for i in list_node_ids:
         # количество задач на узел по экспоненциальному распределению
-        count_tasks_node_i = int(np.random.exponential(scale=expect_tasks_on_one, size=1))
+        # count_tasks_node_i = int(np.random.exponential(scale=expect_tasks_on_one, size=1))
+        
+        # количество задач на узел по нормальному распределению
+        count_tasks_node_i = int(np.abs(np.random.normal(loc=expect_tasks_on_one, scale=1.0, size=1)))
+        
         classes_tasks = np.random.choice(4, count_tasks_node_i, p=[0.3, 0.4, 0.2, 0.1])
         for j in range(count_tasks_node_i):
             class_task_j = classes_tasks[j]
