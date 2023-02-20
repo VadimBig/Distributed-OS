@@ -31,7 +31,7 @@ def get_sincos(x_s, x_e, y, w, sin):
     
     return way_equation
 
-def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=2.0) -> list[tuple]:
+def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=3.0) -> list[tuple]:
     """
     Для набора id девайсов генерирует список задач, который включает:
     * `calc_size` - вычислительную сложность
@@ -144,11 +144,11 @@ if __name__ == "__main__":
         8: maxpower * 0.01 # смарт-часы
     }
     # загружаем json с описанием сценария
-    number_scenario = '3_2'
-    mode = 'elementary'
+    number_scenario = '1'
+    mode = 'basic'
     sim_time = 10_000_000 # ms
     vis=False
-    np.random.seed(0)
+    np.random.seed(1)
     file = open(fr'.\scenario\config_scenario_{number_scenario}.json')
     scenario = json.load(file)
 
