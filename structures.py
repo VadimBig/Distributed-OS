@@ -18,6 +18,7 @@ class Task:
     transfer_weight: int  # размер задачи для передачи данных в байтах
     transfer_weight_return: int  # размер результата задачи для передачи данных
     customer_id: int  # id of a customer of the task
+    task_id: int
     # time_to_create: float # время появления задачи
 
     def __hash__(self) -> int:
@@ -45,12 +46,32 @@ class Logger:
     
     def stats(self,):
         # calc mean, std, 
-        calc_durs = [self.tasks[task][1] - self.tasks[task][0] for task in self.tasks.keys()]
-        calc_durs = [x for x in calc_durs if x > 0]
+        # calc_durs = [self.tasks[task][1] - self.tasks[task][0] for task in self.tasks.keys()]
+        # calc_durs = [x for x in calc_durs if x > 0]
         df = pd.DataFrame()
-        df['calc_durs'] = calc_durs
-        
-        return df.describe()        
+        ids = []
+        calc_size = []
+        transfer_weight = []
+        return_weight = []
+        customer_id = []
+        time_given = []
+        time_finished = []
+        for task in self.tasks.keys():
+            ids.append(task.task_id)
+            calc_size.append(task.calc_size)
+            transfer_weight.append(task.transfer_weight)
+            return_weight.append(task.transfer_weight_return)
+            customer_id.append(task.customer_id)
+            time_given.append(self.tasks[task][0])
+            time_finished.append(self.tasks[task][1])
+        df['id'] = ids
+        df['calc_size'] = calc_size
+        df['transfer_weight'] = transfer_weight
+        df['transfer_return_weight'] = return_weight
+        df['customer_id'] = customer_id
+        df['time_given'] = time_given
+        df['time_finished'] = time_finished
+        return df      
 
 
 class Node:
@@ -210,9 +231,9 @@ class Net:
         self.nodes = nodes  # набор узлов в формате node_id : Node
         self.G = nx.Graph()  # может иметь произвольное количество компонент связности, должен динамически меняться в зависимотсти от положение узлов
         # 100 мб/c. Меняет в зависимости от растояния по нелинейным формулам
-        self.max_bandwidth = 100
-        # максимальное расстояние на котором поддерживается свзять 30м. Если расстояние больше, то связь разорвана
-        self.max_distance = 10
+        self.max_bandwidth = 37.5
+        # максимальное расстояние на котором поддерживается свзять 13м. Если расстояние больше, то связь разорвана
+        self.max_distance = 30
         # считаем силу сигнала в зависимости от расстояния по этой формуле. должна учитывать max_bandwidth
         self.bandwidth_formula = bandwidth_formula(
             self.max_distance, self.max_bandwidth)
@@ -456,17 +477,13 @@ class Net:
                         task: Task,
                         min_cost=None):
         '''
-            A basic scheduler which assigns tasks to nodes according to the following algorithm
-
-
+            Scheduler which assigns tasks to nodes according to the following algorithm:
             в компоненте связности каждому ребру присваиваем вес transfer_weight / bandwidth
             запускаем беллмана форда для source -> получаем расстояния до всех других вершин
             добавляем к каждму расстоянию calc_size / power
             выбираем наименьшее число из полученных - это тот кто выполнит нашу задачу быстрее всех с учетом передачи данных
 
             так как нам еще нужно вернуть результат в source, то на первом этапе прибавляем еще аналогичное слагаемое для transfer_weight_return
-
-
             input:
                 'node_id' (int) - id of a customer node
                 'task' (Task) - a task to be scheduled
@@ -619,7 +636,7 @@ class Simulation:
                 self.net.schedule(timestep=self.time, to_schedule=curr_tasks)
                 if self.time % 10000 == 0:
                     self.net.schedule_all(timestep=self.time)
-                if save_dir and self.time % 100 == 0:
+                if save_dir and self.time % 300 == 0:
                     self.visualization(boundaries=boundaries,save_dir=save_dir)
                 pbar.update(1)
         self.logger.print_logs()
@@ -634,15 +651,18 @@ class Simulation:
         files = [os.path.join(frames_dir, f) for f in files] # add path to each file
         files.sort(key=lambda x: os.path.getmtime(x))
         #quantity_of_Frames = len(frames_Name)
-        frames = [Image.open(img_path) for img_path in files]
+        frames = [Image.open(img_path) for img_path in files if img_path[-3:]=='png']
         frames[0].save(
-            'Simulation.gif',
+            frames_dir+'simulation.gif',
             save_all=True,
             append_images=frames[1:],  # Срез который игнорирует первый кадр.
             optimize=True,
             duration=120,
             loop=0
-        )        
+        )
+        for f in files:
+            if f[-3:]=='png':
+                os.remove(f)
 
     def reset(self,):
         '''

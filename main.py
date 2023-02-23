@@ -1,6 +1,6 @@
 from structures import *
 import json
-
+from tqdm import tqdm
 
 def get_brown(x_s, y_s, x_e, y_e, w, n=1):
     def way_equation(x0, y0, d, t): return constraints_to_brownian(
@@ -31,7 +31,7 @@ def get_sincos(x_s, x_e, y, w, sin):
     
     return way_equation
 
-def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=3.0, std=0.5 ** 0.5) -> list[tuple]:
+def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=30.0, std=0.5 ** 0.5) -> list[tuple]:
     """
     Для набора id девайсов генерирует список задач, который включает:
     * `calc_size` - вычислительную сложность
@@ -51,21 +51,21 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=3.0, std=0.5 **
     ```
     """
     output = []
-    prev_time = 0.0
+    task_id = 1
     for i in list_node_ids:
         # количество задач на узел по экспоненциальному распределению
         # count_tasks_node_i = int(np.random.exponential(scale=expect_tasks_on_one, size=1))
-        
+        prev_time = 0.0
         # количество задач на узел по нормальному распределению
         count_tasks_node_i = int(np.abs(np.random.normal(loc=expect_tasks_on_one, scale=std, size=1)))
         
-        classes_tasks = np.random.choice(4, count_tasks_node_i, p=[0.3, 0.4, 0.2, 0.1])
+        classes_tasks = np.random.choice(4, count_tasks_node_i, p=[0.05, 0.10, 0.35, 0.5]) # AMEND
         for j in range(count_tasks_node_i):
             class_task_j = classes_tasks[j]
             if class_task_j == 0:
                 # вычислительная сложность
                 beta = 0.5
-                max_calc_size = 1200000
+                max_calc_size = 1_200_000
 
                 # отправка
                 max_send_size = 200
@@ -78,7 +78,7 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=3.0, std=0.5 **
             elif class_task_j == 1:
                 # вычислительная сложность
                 beta = 0.5
-                max_calc_size = 600000
+                max_calc_size = 600_000
 
                 # отправка
                 max_send_size = 100
@@ -91,7 +91,7 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=3.0, std=0.5 **
             elif class_task_j == 2:
                 # вычислительная сложность
                 beta = 0.5
-                max_calc_size = 240000
+                max_calc_size = 240_000
 
                 # отправка
                 max_send_size = 30
@@ -104,7 +104,7 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=3.0, std=0.5 **
             else:
                 # вычислительная сложность
                 beta = 0.5
-                max_calc_size = 5000
+                max_calc_size = 5_000
 
                 # отправка
                 max_send_size = 10.0
@@ -129,8 +129,9 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=3.0, std=0.5 **
             time_to_create = prev_time + \
                 float(np.random.exponential(scale=1000.0, size=1))
             task_j = Task(calc_size, transfer_weight,
-                          transfer_weight_return, int(i))
+                          transfer_weight_return, int(i),task_id=task_id)
             output.append((i, time_to_create, task_j))
+            task_id += 1
             prev_time = time_to_create
     return sorted(output, key=lambda x: x[1])
 
@@ -149,97 +150,90 @@ if __name__ == "__main__":
         8: maxpower * 0.01 # смарт-часы
     }
     # загружаем json с описанием сценария
-    number_scenario = '3_2'
-    mode = 'basic'
-    sim_time = 100_000 # ms
-    vis=True
-    np.random.seed(1)
-    file = open(fr'.\scenario\config_scenario_{number_scenario}.json')
-    scenario = json.load(file)
-
-    count_devices = scenario['count_devices']
-
-    # могут ли девайсы выключиться во время симуляции
-    poweroff_posibility = scenario['poweroff_posibility']
-
-    nodes = dict()
-    way_equations = [0] * (len(scenario['nodes']) + 1)
-    # Создаём словарь узлов {node_id: Node}
-    for node_id in scenario['nodes']:
-
-        x0, y0 = scenario['nodes'][node_id]['x'], scenario['nodes'][node_id]['y']
-        power = powers[scenario['nodes'][node_id]['class_power']]
-        way_eq = scenario['nodes'][node_id]['way_eq']
-
-        # задаём уравнение движения для узла
-        if way_eq == "static":
-            wq = get_static(x0, y0)
-
-        elif way_eq == "circle":
-            w = scenario['nodes'][node_id]['w']
-            direction = scenario['nodes'][node_id]['direction']
-            xc, yc = scenario['nodes'][node_id]['xc'], scenario['nodes'][node_id]['yc']
-            wq = get_circle(xc, yc, w, direction)
-        elif way_eq == "partline":
-            x_s, y_s = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['y_start']
-            x_e, y_e = scenario['nodes'][node_id]['x_end'], scenario['nodes'][node_id]['y_end']
-            w, direction = scenario['nodes'][node_id]['w'], scenario['nodes'][node_id]['direction']
-            wq = get_partline(x_s, y_s, x_e, y_e, w)
-
-        elif way_eq == "sin_or_cos":
-            x_s, x_e = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['x_end']
-            w = scenario['nodes'][node_id]['w']
-            its_sin = scenario['nodes'][node_id]['sin']
-            y = y0
-            wq = get_sincos(x_s, x_e, y, w, its_sin)
-
-        elif way_eq == "brownian":
-            n = 1
-            w = scenario['nodes'][node_id]['w']
-            x_s, y_s = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['y_start']
-            x_e, y_e = scenario['nodes'][node_id]['x_end'], scenario['nodes'][node_id]['y_end']
-            wq = get_brown(x_s, y_s, x_e, y_e, w)
-
-        else:
-            print(
-                f"Для узла {node_id} задано не реализованное уравнение движения - {way_eq}.")
-            raise ValueError
-
-        nodes[int(node_id)] = Node(x0, y0, power, wq)
-
-    # генерируем сценарии
-    node_ids = [int(a) for a in list(scenario['nodes'].keys())]
-    tasks = generate_tasks(node_ids)
-
-    def bandwidth_formula(max_dist, max_bandwidth): return (
-        lambda d: max_bandwidth - d*(max_bandwidth/max_dist))
-    logger = Logger('text.txt')
-    # задаём сеть
-    net = Net(bandwidth_formula, nodes,logger=logger,debug_info=False,mode=mode)
-    # customer, time, task = tasks[0]
-    # net.update(0,0)
-    # print(task)
-    # print(net.G.edges)
-    # net.schedule(time,to_schedule=[(task.customer_id, task)])
-    # net.update(103.9,103.9)
-    # net.update(104,0.1)
-    # print(net.nodes)
-    # format X_min, Y_min, X_max, Y_max
+    sim_time = 5_000_000 # ms
+    vis=False
     boundaries = {
         '1': (-5, -9, 9, 8),
         '2': (-3*np.sqrt(2), -3*np.sqrt(2), 3*np.sqrt(2), 3*np.sqrt(2)),
         '3_1': (-4, -6, 4, 6),
         '3_2': (-12, -12, 12, 12),
-        '4':(-4, -4, 4, 4)
+        '4':(-10, -10, 10, 10)
     }
+    scenarios = ['1','2','3_1', '3_2', '4']
+    # scenarios = ['4']
+    modes = ['basic', 'elementary']
+    for number_scenario in tqdm(scenarios):
+        for mode in tqdm(modes):   
+            np.random.seed(1)
+            file = open(fr'.\scenario\config_scenario_{number_scenario}.json')
+            scenario = json.load(file)
 
+            count_devices = scenario['count_devices']
 
-    sim = Simulation(tasks=tasks, net=net, step=10,logger=logger)
-    if vis==True:
-        save_dir = f'sim_results/test_{number_scenario}_{mode}'
-    else:
-        save_dir=None
-    sim.run(sim_time,boundaries=boundaries[number_scenario],save_dir=save_dir,describe_file=f'sim_results/test_{number_scenario}_{mode}.csv') # 200
+            # могут ли девайсы выключиться во время симуляции
+            poweroff_posibility = scenario['poweroff_posibility']
+
+            nodes = dict()
+            way_equations = [0] * (len(scenario['nodes']) + 1)
+            # Создаём словарь узлов {node_id: Node}
+            for node_id in scenario['nodes']:
+
+                x0, y0 = scenario['nodes'][node_id]['x'], scenario['nodes'][node_id]['y']
+                power = powers[scenario['nodes'][node_id]['class_power']]
+                way_eq = scenario['nodes'][node_id]['way_eq']
+
+                # задаём уравнение движения для узла
+                if way_eq == "static":
+                    wq = get_static(x0, y0)
+
+                elif way_eq == "circle":
+                    w = scenario['nodes'][node_id]['w']
+                    direction = scenario['nodes'][node_id]['direction']
+                    xc, yc = scenario['nodes'][node_id]['xc'], scenario['nodes'][node_id]['yc']
+                    wq = get_circle(xc, yc, w, direction)
+                elif way_eq == "partline":
+                    x_s, y_s = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['y_start']
+                    x_e, y_e = scenario['nodes'][node_id]['x_end'], scenario['nodes'][node_id]['y_end']
+                    w, direction = scenario['nodes'][node_id]['w'], scenario['nodes'][node_id]['direction']
+                    wq = get_partline(x_s, y_s, x_e, y_e, w)
+
+                elif way_eq == "sin_or_cos":
+                    x_s, x_e = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['x_end']
+                    w = scenario['nodes'][node_id]['w']
+                    its_sin = scenario['nodes'][node_id]['sin']
+                    y = y0
+                    wq = get_sincos(x_s, x_e, y, w, its_sin)
+
+                elif way_eq == "brownian":
+                    n = 1
+                    w = scenario['nodes'][node_id]['w']
+                    x_s, y_s = scenario['nodes'][node_id]['x_start'], scenario['nodes'][node_id]['y_start']
+                    x_e, y_e = scenario['nodes'][node_id]['x_end'], scenario['nodes'][node_id]['y_end']
+                    wq = get_brown(x_s, y_s, x_e, y_e, w)
+
+                else:
+                    print(
+                        f"Для узла {node_id} задано не реализованное уравнение движения - {way_eq}.")
+                    raise ValueError
+
+                nodes[int(node_id)] = Node(x0, y0, power, wq)
+
+            # генерируем сценарии
+            node_ids = [int(a) for a in list(scenario['nodes'].keys())]
+            tasks = generate_tasks(node_ids)
+
+            def bandwidth_formula(max_dist, max_bandwidth): return (
+                lambda d: max_bandwidth - d*(max_bandwidth/max_dist))
+
+            logger = Logger('text.txt')
+            # задаём сеть
+            net = Net(bandwidth_formula, nodes,logger=logger,debug_info=False,mode=mode)
+            sim = Simulation(tasks=tasks, net=net, step=10,logger=logger)
+            if vis==True:
+                save_dir = f'sim_results/test_{number_scenario}_{mode}/'
+            else:
+                save_dir=None
+            sim.run(sim_time,boundaries=boundaries[number_scenario],save_dir=save_dir,describe_file=f'sim_results/test_{number_scenario}_{mode}.csv') # 200
 
     # 1. Сценарии. Разобрать с генератором задач
     # 2. Переменная хранения состояния сети, интерфейс для использования в Simulator (описан в init класса Net)
@@ -266,3 +260,9 @@ if __name__ == "__main__":
     6) не стройте вырожденные сценарии. Размер данных для передачи по сети не должен быть слишком большой
     7) количество узлов 3-15
     """
+# Увеличить количество задачек
+# Посчитать матожидание calc_size, подрезать вероятности, вероятности пофиксить
+# Пересчитать симуляцию
+# снизить max_distance transmition
+# снизить скорость передачи данных, подобрать формулы
+# 
