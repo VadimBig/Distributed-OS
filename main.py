@@ -59,7 +59,7 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=3.0, std=0.5 **
         # количество задач на узел по нормальному распределению
         count_tasks_node_i = int(np.abs(np.random.normal(loc=expect_tasks_on_one, scale=std, size=1)))
         
-        classes_tasks = np.random.choice(4, count_tasks_node_i, p=[0.3, 0.4, 0.2, 0.1])
+        classes_tasks = np.random.choice(4, count_tasks_node_i, p=[0.01, 0.07, 0.24, 0.62, 0.06]) # [0.06, 0.62, 0.24, 0.07, 0.01]
         for j in range(count_tasks_node_i):
             class_task_j = classes_tasks[j]
             if class_task_j == 0:
@@ -78,7 +78,7 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=3.0, std=0.5 **
             elif class_task_j == 1:
                 # вычислительная сложность
                 beta = 0.5
-                max_calc_size = 600000
+                max_calc_size = 387000
 
                 # отправка
                 max_send_size = 100
@@ -91,7 +91,20 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=3.0, std=0.5 **
             elif class_task_j == 2:
                 # вычислительная сложность
                 beta = 0.5
-                max_calc_size = 240000
+                max_calc_size = 135000
+
+                # отправка
+                max_send_size = 60
+                sigma_send_size = 7
+
+                # получение
+                max_get_size = 60
+                sigma_get_size = 7
+            
+            elif class_task_j == 3:
+                # вычислительная сложность
+                beta = 0.5
+                max_calc_size = 46000
 
                 # отправка
                 max_send_size = 30
@@ -100,11 +113,11 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=3.0, std=0.5 **
                 # получение
                 max_get_size = 30
                 sigma_get_size = 7
-
+                
             else:
                 # вычислительная сложность
                 beta = 0.5
-                max_calc_size = 5000
+                max_calc_size = 600
 
                 # отправка
                 max_send_size = 10.0
