@@ -59,7 +59,7 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=30.0, std=0.5 *
         # количество задач на узел по нормальному распределению
         count_tasks_node_i = int(np.abs(np.random.normal(loc=expect_tasks_on_one, scale=std, size=1)))
         
-        classes_tasks = np.random.choice(4, count_tasks_node_i, p=[0.01, 0.07, 0.24, 0.62, 0.06]) # [0.06, 0.62, 0.24, 0.07, 0.01]
+        classes_tasks = np.random.choice(5, count_tasks_node_i, p=[0.01, 0.07, 0.24, 0.62, 0.06]) # [0.06, 0.62, 0.24, 0.07, 0.01]
         for j in range(count_tasks_node_i):
             class_task_j = classes_tasks[j]
             if class_task_j == 0:
@@ -163,17 +163,10 @@ if __name__ == "__main__":
         8: maxpower * 0.01 # смарт-часы
     }
     # загружаем json с описанием сценария
-    sim_time = 5_000_000 # ms
+    sim_time = 43_200 #000 # 12 hrs to ms
     vis=False
-    boundaries = {
-        '1': (-5, -9, 9, 8),
-        '2': (-3*np.sqrt(2), -3*np.sqrt(2), 3*np.sqrt(2), 3*np.sqrt(2)),
-        '3_1': (-4, -6, 4, 6),
-        '3_2': (-12, -12, 12, 12),
-        '4':(-10, -10, 10, 10)
-    }
-    scenarios = ['1','2','3_1', '3_2', '4']
-    # scenarios = ['4']
+    # scenarios = ['1','2','3', '4']
+    scenarios = ['2']
     modes = ['basic', 'elementary']
     for number_scenario in tqdm(scenarios):
         for mode in tqdm(modes):   
@@ -235,38 +228,18 @@ if __name__ == "__main__":
             node_ids = [int(a) for a in list(scenario['nodes'].keys())]
             tasks = generate_tasks(node_ids)
 
-    def bandwidth_formula(max_dist, max_bandwidth): return (
-        lambda d: max_bandwidth - d*(max_bandwidth/max_dist))
-    logger = Logger('text.txt')
-    # задаём сеть
-    net = Net(bandwidth_formula, nodes,logger=logger,debug_info=False,mode=mode)
-    # customer, time, task = tasks[0]
-    # net.update(0,0)
-    # print(task)
-    # print(net.G.edges)
-    # net.schedule(time,to_schedule=[(task.customer_id, task)])
-    # net.update(103.9,103.9)
-    # net.update(104,0.1)
-    # print(net.nodes)
-    # format X_min, Y_min, X_max, Y_max
-    
-    boundaries = scenario["boundaries"]
-    
-#     boundaries = {
-#         '1': (-5, -9, 9, 8),
-#         '2': (-3*np.sqrt(2), -3*np.sqrt(2), 3*np.sqrt(2), 3*np.sqrt(2)),
-#         '3_1': (-4, -6, 4, 6),
-#         '3_2': (-12, -12, 12, 12),
-#         '4':(-4, -4, 4, 4)
-#     }
-
-
-    sim = Simulation(tasks=tasks, net=net, step=10,logger=logger)
-    if vis==True:
-        save_dir = f'sim_results/test_{number_scenario}_{mode}'
-    else:
-        save_dir=None
-    sim.run(sim_time,boundaries=boundaries[number_scenario],save_dir=save_dir,describe_file=f'sim_results/test_{number_scenario}_{mode}.csv') # 200
+            def bandwidth_formula(max_dist, max_bandwidth): return (
+                lambda d: max_bandwidth - d*(max_bandwidth/max_dist))
+            logger = Logger('text.txt')
+            # задаём сеть
+            boundaries = scenario["boundaries"]
+            net = Net(bandwidth_formula, nodes,logger=logger,debug_info=False,mode=mode)
+            sim = Simulation(tasks=tasks, net=net, step=10,logger=logger)
+            if vis==True:
+                save_dir = f'sim_results/test_{number_scenario}_{mode}'
+            else:
+                save_dir=None
+            sim.run(sim_time,boundaries=boundaries,save_dir=save_dir,describe_file=f'sim_results/test_{number_scenario}_{mode}.csv') # 200
 
     # 1. Сценарии. Разобрать с генератором задач
     # 2. Переменная хранения состояния сети, интерфейс для использования в Simulator (описан в init класса Net)

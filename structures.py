@@ -233,7 +233,7 @@ class Net:
         # 100 мб/c. Меняет в зависимости от растояния по нелинейным формулам
         self.max_bandwidth = 37.5
         # максимальное расстояние на котором поддерживается свзять 13м. Если расстояние больше, то связь разорвана
-        self.max_distance = 30
+        self.max_distance = 20
         # считаем силу сигнала в зависимости от расстояния по этой формуле. должна учитывать max_bandwidth
         self.bandwidth_formula = bandwidth_formula(
             self.max_distance, self.max_bandwidth)
@@ -347,17 +347,18 @@ class Net:
                     transfers_calc_results_to_finish.append(transfer)
                 else:
                     transfers_to_finish.append(transfer)
-            # CHECK IF THE TRANSFERS ARE STILL POSSIBLE
-            break_loop = False
-            for i in range(len(route)):
-                for j in range(i+1, len(route)):
-                    if not self.__check_connection(route[i], route[j]):
-                        transfers_to_stop.append(transfer)
-                        # exit from outer loop
-                        break_loop = True
+            else:
+                # CHECK IF THE TRANSFERS ARE STILL POSSIBLE
+                break_loop = False
+                for i in range(len(route)):
+                    for j in range(i+1, len(route)):
+                        if not self.__check_connection(route[i], route[j]):
+                            transfers_to_stop.append(transfer)
+                            # exit from outer loop
+                            break_loop = True
+                            break
+                    if break_loop:
                         break
-                if break_loop:
-                    break
         transfers_to_continue = [
             transfer for transfer in self.transfers if transfer not in transfers_to_stop and transfer not in transfers_to_finish and transfer not in transfers_calc_results_to_finish]
 
@@ -653,7 +654,7 @@ class Simulation:
         #quantity_of_Frames = len(frames_Name)
         frames = [Image.open(img_path) for img_path in files if img_path[-3:]=='png']
         frames[0].save(
-            frames_dir+'simulation.gif',
+            frames_dir+'//simulation.gif',
             save_all=True,
             append_images=frames[1:],  # Срез который игнорирует первый кадр.
             optimize=True,
