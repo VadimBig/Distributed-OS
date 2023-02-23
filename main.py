@@ -238,13 +238,16 @@ if __name__ == "__main__":
     # net.update(104,0.1)
     # print(net.nodes)
     # format X_min, Y_min, X_max, Y_max
-    boundaries = {
-        '1': (-5, -9, 9, 8),
-        '2': (-3*np.sqrt(2), -3*np.sqrt(2), 3*np.sqrt(2), 3*np.sqrt(2)),
-        '3_1': (-4, -6, 4, 6),
-        '3_2': (-12, -12, 12, 12),
-        '4':(-4, -4, 4, 4)
-    }
+    
+    boundaries = scenario["boundaries"]
+    
+#     boundaries = {
+#         '1': (-5, -9, 9, 8),
+#         '2': (-3*np.sqrt(2), -3*np.sqrt(2), 3*np.sqrt(2), 3*np.sqrt(2)),
+#         '3_1': (-4, -6, 4, 6),
+#         '3_2': (-12, -12, 12, 12),
+#         '4':(-4, -4, 4, 4)
+#     }
 
 
     sim = Simulation(tasks=tasks, net=net, step=10,logger=logger)
