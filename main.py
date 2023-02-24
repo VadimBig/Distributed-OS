@@ -163,10 +163,10 @@ if __name__ == "__main__":
         8: maxpower * 0.01 # смарт-часы
     }
     # загружаем json с описанием сценария
-    sim_time = 43_200 #000 # 12 hrs to ms
+    sim_time = 43_200_000 ## 12 hrs to ms
     vis=False
-    # scenarios = ['1','2','3', '4']
-    scenarios = ['2']
+    # scenarios = ['1','2' ,'3', '4']
+    scenarios = ['3']
     modes = ['basic', 'elementary']
     for number_scenario in tqdm(scenarios):
         for mode in tqdm(modes):   
