@@ -2,7 +2,7 @@
     "count_devices": 13,
     "nodes": {
         "1": {
-            "x": -5,
+            "x": 0,
             "y": 0,
             "class_power": 1,
             "way_eq": "static"
@@ -62,7 +62,7 @@
             "way_eq": "static"
         },
         "11": {
-            "x": 0,
+            "x": -5,
             "y": 0,
             "class_power": 7,
             "way_eq": "static"
