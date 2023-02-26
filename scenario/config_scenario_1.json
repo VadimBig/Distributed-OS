@@ -1,32 +1,86 @@
 {
-    "count_devices": 4,
+    "count_devices": 13,
     "nodes": {
         "1": {
             "x": -5,
-            "y": -5,
+            "y": 0,
             "class_power": 1,
             "way_eq": "static"
         },
         "2": {
-            "x": -5,
-            "y": 8,
-            "class_power": 7,
+            "x": 5,
+            "y": 0,
+            "class_power": 2,
             "way_eq": "static"
         },
         "3": {
-            "x": 9,
+            "x": 2,
+            "y": 4.583,
+            "class_power": 3,
+            "way_eq": "static"
+        },
+        "4": {
+            "x": -2,
+            "y": -4.583,
+            "class_power": 3,
+            "way_eq": "static"
+        },
+        "5": {
+            "x": 4.583,
+            "y": 2,
+            "class_power": 4,
+            "way_eq": "static"
+        },
+        "6": {
+            "x": -4.583,
+            "y": -2,
+            "class_power": 4,
+            "way_eq": "static"
+        },
+        "7": {
+            "x": -4.583,
+            "y": 2,
+            "class_power": 5,
+            "way_eq": "static"
+        },
+        "8": {
+            "x": 4.583,
+            "y": -2,
+            "class_power": 5,
+            "way_eq": "static"
+        },
+        "9": {
+            "x": -2,
+            "y": 4.583,
+            "class_power": 6,
+            "way_eq": "static"
+        },
+        "10": {
+            "x": 2,
+            "y": -4.583,
+            "class_power": 6,
+            "way_eq": "static"
+        },
+        "11": {
+            "x": 0,
+            "y": 0,
+            "class_power": 7,
+            "way_eq": "static"
+        },
+        "12": {
+            "x": 0,
             "y": 5,
             "class_power": 8,
             "way_eq": "static"
         },
-        "4": {
-            "x": 1,
-            "y": -9,
-            "class_power": 6,
+        "13": {
+            "x": 0,
+            "y": -5,
+            "class_power": 8,
             "way_eq": "static"
         }
     },
-    "boundaries": [-5, 9, -9, 8],
+    "boundaries": [-5, 5, -5, 5],
     "poweroff_posibility": false
 
 }
