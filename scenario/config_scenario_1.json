@@ -80,7 +80,7 @@
             "way_eq": "static"
         }
     },
-    "boundaries": [-5, 5, -5, 5],
+    "boundaries": [-5, -5, 5, 5],
     "poweroff_posibility": false
 
 }
