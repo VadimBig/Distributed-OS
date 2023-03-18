@@ -150,7 +150,7 @@ def generateScenario(k: int, name:str="config_scenario"):
             }
 
         },
-        "boundaries": [(-0.5 * k, 0.5 * k), (-0.5 * k, 0.5 * k)],
+        "boundaries": [-0.5 * k, -0.5 * k, 0.5 * k, 0.5 * k],
         "poweroff_posibility": False
 
     }
