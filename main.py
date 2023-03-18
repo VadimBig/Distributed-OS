@@ -62,81 +62,184 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=30.0, std=0.5 *
         classes_tasks = np.random.choice(5, count_tasks_node_i, p=[0.01, 0.07, 0.24, 0.62, 0.06]) # [0.06, 0.62, 0.24, 0.07, 0.01]
         for j in range(count_tasks_node_i):
             class_task_j = classes_tasks[j]
+            
+            # ML: Распознавание речи
             if class_task_j == 0:
+                tg_alpha = 2.5 / 30_000_000
+                params = 15_000_000 # количество параметров в нашей модели
+                
+                k = params * tg_alpha # коэффициент влияния размера модели на вычислительную сложность
+                
+                max_samples = 3000
+                min_samples = 1000
+                
+                count_samples = int((np.random.exponential(beta, size=1) % 1.0) * (max_samples - min_samples)) + min_samples
+                
                 # вычислительная сложность
                 beta = 0.5
-                max_calc_size = 1_200_000
+                max_calc_size = count_samples * 4500 * k # это 4.6 часов обучения
+                sigma_calc_size = 5 * 60 * 1000
 
                 # отправка
-                max_send_size = 200
+                max_send_size = count_samples * 0.1
                 sigma_send_size = 10
 
                 # получение
-                max_get_size = 200
-                sigma_get_size = 10
-
-            elif class_task_j == 1:
-                # вычислительная сложность
-                beta = 0.5
-                max_calc_size = 387000
-
-                # отправка
-                max_send_size = 100
-                sigma_send_size = 7
-
-                # получение
-                max_get_size = 100
-                sigma_get_size = 7
-
-            elif class_task_j == 2:
-                # вычислительная сложность
-                beta = 0.5
-                max_calc_size = 135000
-
-                # отправка
-                max_send_size = 60
-                sigma_send_size = 7
-
-                # получение
-                max_get_size = 60
-                sigma_get_size = 7
-            
-            elif class_task_j == 3:
-                # вычислительная сложность
-                beta = 0.5
-                max_calc_size = 46000
-
-                # отправка
-                max_send_size = 30
-                sigma_send_size = 7
-
-                # получение
-                max_get_size = 30
-                sigma_get_size = 7
+                max_get_size = (70 / 30_000_000) * params
+                sigma_get_size = 5
                 
-            else:
+                # распределение вычислительной сложности задачи
+                calc_size = int(
+                    np.abs(np.random.normal(loc=max_calc_size, scale=sigma_calc_size, size=1)))
+
+                # распределение размера задачи
+                transfer_weight = int(
+                    np.abs(np.random.normal(loc=max_send_size, scale=sigma_send_size, size=1)))
+
+                # распределение размера ответа
+                transfer_weight_return = int(np.abs(np.random.normal(
+                    loc=max_get_size, scale=sigma_get_size, size=1)))
+               
+            # ML: Распознавание изображений
+            elif class_task_j == 1:
+                params = 50_000_000 # количество параметров в нашей модели
+                
+                k = 10 / 1000 # сколько сэмплов в мс
+                
+                max_samples = 120_000
+                min_samples = 10000
+                
+                count_samples = int((np.random.exponential(beta, size=1) % 1.0) * (max_samples - min_samples)) + min_samples
+                
+                sample_size = 0.15 # сколько вести один сэмпл в МБ
+                
+                
                 # вычислительная сложность
                 beta = 0.5
-                max_calc_size = 600
+                max_calc_size = count_samples / k
+                sigma_calc_size = 2 * 60 * 1000
 
                 # отправка
-                max_send_size = 10.0
+                max_send_size = count_samples * sample_size
                 sigma_send_size = 5
 
                 # получение
-                max_get_size = 10.0
+                max_get_size = (100 / 50_000_000) * params
                 sigma_get_size = 5
+                
+                # распределение вычислительной сложности задачи
+                calc_size = int(
+                    np.abs(np.random.normal(loc=max_calc_size, scale=sigma_calc_size, size=1)))
 
-            # распределение вычислительной сложности задачи
-            calc_size = int((np.random.exponential(beta, size=1) % 1.0) * max_calc_size)
+                # распределение размера задачи
+                transfer_weight = int(
+                    np.abs(np.random.normal(loc=max_send_size, scale=sigma_send_size, size=1)))
 
-            # распределение размера задачи
-            transfer_weight = int(
-                np.abs(np.random.normal(loc=max_send_size, scale=sigma_send_size, size=1)))
+                # распределение размера ответа
+                transfer_weight_return = int(np.abs(np.random.normal(
+                    loc=max_get_size, scale=sigma_get_size, size=1)))
             
-            # распределение размера ответа
-            transfer_weight_return = int(np.abs(np.random.normal(
-                loc=max_get_size, scale=sigma_get_size, size=1)))
+            # ML: Табличные данные
+            elif class_task_j == 2:
+                params = 1000 # количество деревьев в нашей модели
+                
+                max_samples = 11_000_000
+                min_samples = 5_000_000
+                
+                count_samples = int((np.random.exponential(beta, size=1) % 1.0) * (max_samples - min_samples)) + min_samples
+                
+                k = count_samples * (10_000 / 11_000_000) # сколько деревьев в мс
+                
+                # вычислительная сложность
+                max_calc_size = params / k
+                sigma_calc_size = 1000
+
+                # отправка
+                max_send_size = count_samples * (200 / 11_000_000)
+                sigma_send_size = 5
+
+                # получение
+                max_get_size = (30 / 1000) * params
+                sigma_get_size = 5
+                
+                # распределение вычислительной сложности задачи
+                calc_size = int(
+                    np.abs(np.random.normal(loc=max_calc_size, scale=sigma_calc_size, size=1)))
+
+                # распределение размера задачи
+                transfer_weight = int(
+                    np.abs(np.random.normal(loc=max_send_size, scale=sigma_send_size, size=1)))
+
+                # распределение размера ответа
+                transfer_weight_return = int(np.abs(np.random.normal(
+                    loc=max_get_size, scale=sigma_get_size, size=1)))
+            
+            # Анализ данных
+            elif class_task_j == 3:
+                k = 5 / 5000 # скорость обработки одного МБ данных в мс
+                
+                # отправка
+                max_size = 15
+                min_size = 5
+                
+                max_send_size = int((np.random.exponential(beta, size=1) % 1.0) * (max_size - min_size)) + min_size
+                sigma_send_size = 1
+                
+                # вычислительная сложность
+                max_calc_size = max_send_size / k
+                sigma_calc_size = 1000
+
+                # получение
+                max_get_size = 4
+                sigma_get_size = 1
+                
+                # распределение вычислительной сложности задачи
+                calc_size = int(
+                    np.abs(np.random.normal(loc=max_calc_size, scale=sigma_calc_size, size=1)))
+
+                # распределение размера задачи
+                transfer_weight = int(
+                    np.abs(np.random.normal(loc=max_send_size, scale=sigma_send_size, size=1)))
+
+                # распределение размера ответа
+                transfer_weight_return = int(np.abs(np.random.normal(
+                    loc=max_get_size, scale=sigma_get_size, size=1)))
+            
+            # Рендеринг видео
+            else:               
+                k =  0.0043 # сколько сэмплов в мс
+                
+                max_samples = 30_000
+                min_samples = 1000
+                
+                count_samples = int((np.random.exponential(beta, size=1) % 1.0) * (max_samples - min_samples)) + min_samples
+                
+                sample_size = 0.5 # сколько вести один сэмпл в МБ
+                
+                
+                # вычислительная сложность
+                max_calc_size = count_samples / k
+                sigma_calc_size = 10 * 1000
+
+                # отправка
+                max_send_size = count_samples * sample_size
+                sigma_send_size = 5
+
+                # получение
+                max_get_size = count_samples * sample_size
+                sigma_get_size = 5
+                
+                # распределение вычислительной сложности задачи
+                calc_size = int(
+                    np.abs(np.random.normal(loc=max_calc_size, scale=sigma_calc_size, size=1)))
+
+                # распределение размера задачи
+                transfer_weight = int(
+                    np.abs(np.random.normal(loc=max_send_size, scale=sigma_send_size, size=1)))
+
+                # распределение размера ответа
+                transfer_weight_return = int(np.abs(np.random.normal(
+                    loc=max_get_size, scale=sigma_get_size, size=1)))
 
             # задаём время, когда должна появится задача по экспоненциальному распределению
             time_to_create = prev_time + \
