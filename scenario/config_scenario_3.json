@@ -142,8 +142,8 @@
     },
     "boundaries": [
         -30.0,
-        30.0,
         -30.0,
+        30.0,
         30.0
     ],
     "poweroff_posibility": false
