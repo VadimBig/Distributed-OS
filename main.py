@@ -72,11 +72,10 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=30.0, std=0.5 *
                 
                 max_samples = 3000
                 min_samples = 1000
-                
+                beta = 0.5
                 count_samples = int((np.random.exponential(beta, size=1) % 1.0) * (max_samples - min_samples)) + min_samples
                 
                 # вычислительная сложность
-                beta = 0.5
                 max_calc_size = count_samples * 4500 * k # это 4.6 часов обучения
                 sigma_calc_size = 5 * 60 * 1000
 
@@ -109,13 +108,13 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=30.0, std=0.5 *
                 max_samples = 120_000
                 min_samples = 10000
                 
+                beta = 0.5
                 count_samples = int((np.random.exponential(beta, size=1) % 1.0) * (max_samples - min_samples)) + min_samples
                 
                 sample_size = 0.15 # сколько вести один сэмпл в МБ
                 
                 
                 # вычислительная сложность
-                beta = 0.5
                 max_calc_size = count_samples / k
                 sigma_calc_size = 2 * 60 * 1000
 
@@ -145,7 +144,7 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=30.0, std=0.5 *
                 
                 max_samples = 11_000_000
                 min_samples = 5_000_000
-                
+                beta = 0.5
                 count_samples = int((np.random.exponential(beta, size=1) % 1.0) * (max_samples - min_samples)) + min_samples
                 
                 k = count_samples * (10_000 / 11_000_000) # сколько деревьев в мс
@@ -182,6 +181,7 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=30.0, std=0.5 *
                 max_size = 15
                 min_size = 5
                 
+                beta = 0.5
                 max_send_size = int((np.random.exponential(beta, size=1) % 1.0) * (max_size - min_size)) + min_size
                 sigma_send_size = 1
                 
@@ -212,6 +212,7 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=30.0, std=0.5 *
                 max_samples = 30_000
                 min_samples = 1000
                 
+                beta = 0.5
                 count_samples = int((np.random.exponential(beta, size=1) % 1.0) * (max_samples - min_samples)) + min_samples
                 
                 sample_size = 0.5 # сколько вести один сэмпл в МБ
