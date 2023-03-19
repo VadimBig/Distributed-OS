@@ -31,7 +31,7 @@ def get_sincos(x_s, x_e, y, w, sin):
     
     return way_equation
 
-def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=30.0, std=0.5 ** 0.5) -> list[tuple]:
+def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=20.0, std=0.5 ** 0.5) -> list[tuple]:
     """
     Для набора id девайсов генерирует список задач, который включает:
     * `calc_size` - вычислительную сложность
@@ -59,7 +59,7 @@ def generate_tasks(list_node_ids: list[str], expect_tasks_on_one=30.0, std=0.5 *
         # количество задач на узел по нормальному распределению
         count_tasks_node_i = int(np.abs(np.random.normal(loc=expect_tasks_on_one, scale=std, size=1)))
         
-        classes_tasks = np.random.choice(5, count_tasks_node_i, p=[0.05, 0.1, 0.25, 0.5, 0.1]) # [0.06, 0.62, 0.24, 0.07, 0.01]
+        classes_tasks = np.random.choice(5, count_tasks_node_i, p=[0.05, 0.2, 0.15, 0.5, 0.1]) # [0.06, 0.62, 0.24, 0.07, 0.01]
         for j in range(count_tasks_node_i):
             class_task_j = classes_tasks[j]
             
